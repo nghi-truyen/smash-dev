@@ -23,13 +23,15 @@ def save_model_ddt(model: Model, path: FilePath):
     """
     Save some derived data types of the Model object to HDF5.
 
-    This method is considerably lighter than `smash.io.save_model` method that saves the entire Model object.
-    However, it is not capable of reconstructing the Model object from the saved data file.
+    This method is considerably lighter than `smash.io.save_model <save_model>` method that saves
+    the entire Model object. Note that there is no method to reconstruct the Model object with
+    the saved data file from this method, as some information is left out to ensure a lighter memory backup.
+    To read the saved data, use `smash.io.read_model_ddt <read_model_ddt>`,
+    which returns a dictionary reflecting the structure of the Model object.
 
-    By default, the following data are stored into the `HDF5 <https://www.hdfgroup.org/solutions/hdf5/>`__
-    file:
+    The following data are stored into the `HDF5 <https://www.hdfgroup.org/solutions/hdf5/>`__ file:
 
-    - ``snow_module``, ``hydrological_module``, ``routing_module``, ``hidden_neuron``, ``serr_mu_mapping``,
+    - ``snow_module``, ``hydrological_module``, ``routing_module``, ``serr_mu_mapping``,
       ``serr_sigma_mapping``, ``start_time``, ``end_time``, ``dt``, ``descriptor_name`` from
       `Model.setup <smash.Model.setup>`
     - ``xres``, ``yres``, ``xmin``, ``ymax``, ``dx``, ``dy``, ``active_cell``, ``gauge_pos``, ``code``,
@@ -41,7 +43,7 @@ def save_model_ddt(model: Model, path: FilePath):
       are only stored if a snow module has been selected)
     - ``keys``, ``values`` from `Model.rr_parameters <smash.Model.rr_parameters>`
     - ``keys``, ``values`` from `Model.rr_initial_states <smash.Model.rr_initial_states>`
-    - ``weight_1``, ``bias_1``, ``weight_2``, ``bias_2`` from
+    - ``weight_1``, ``bias_1``, ``weight_2``, ``bias_2``, ``weight_3``, ``bias_3`` from
       `Model.nn_parameters <smash.Model.nn_parameters>` (depending on the hydrological module)
     - ``keys``, ``values`` from `Model.serr_mu_parameters <smash.Model.serr_mu_parameters>`
     - ``keys``, ``values`` from `Model.serr_sigma_parameters <smash.Model.serr_sigma_parameters>`
@@ -92,7 +94,7 @@ def read_model_ddt(path: FilePath) -> dict[str, dict[str, Any]]:
     Read some derived data types of the Model object from HDF5.
 
     This method does not reconstruct the Model object because certain information has not been saved from the
-    `smash.io.save_model_ddt` method
+    `smash.io.save_model_ddt <save_model_ddt>` method
     in order to have light memory backup. This method returns a dictionary whose organisation is similar to
     the Model object.
 
@@ -140,10 +142,10 @@ def read_model_ddt(path: FilePath) -> dict[str, dict[str, Any]]:
     Access to setup variables
 
     >>> model_ddt["setup"]
-    {'descriptor_name': array(['slope', 'dd'], dtype='<U5'),
-    'hidden_neuron': 16, 'dt': 3600.0, 'end_time': '2014-11-14 00:00',
-    'hydrological_module': 'gr4', 'routing_module': 'lr', 'serr_mu_mapping': 'Zero',
-    'serr_sigma_mapping': 'Linear', 'snow_module': 'zero', 'start_time': '2014-09-15 00:00'}
+    {'descriptor_name': array(['slope', 'dd'], dtype='<U5'), 'dt': 3600.0,
+    'end_time': '2014-11-14 00:00', 'hydrological_module': 'gr4', 'routing_module': 'lr',
+    'serr_mu_mapping': 'Zero', 'serr_sigma_mapping': 'Linear', 'snow_module': 'zero',
+    'start_time': '2014-09-15 00:00'}
 
     Access to rainfall-runoff parameter keys
 

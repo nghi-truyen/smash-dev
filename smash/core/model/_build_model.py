@@ -180,10 +180,9 @@ def _build_parameters(
         parameters.serr_sigma_parameters.values[..., i] = value
 
     # % Initalize weights and biases of ANN if hybrid model structure is used
-    if sum(setup.neurons) > 0:
-        for key in OPTIMIZABLE_NN_PARAMETERS:
-            # zero init
-            setattr(parameters.nn_parameters, key, 0)
+    for key in OPTIMIZABLE_NN_PARAMETERS[max(0, setup.n_layers - 1)]:
+        # zero init
+        setattr(parameters.nn_parameters, key, 0)
 
 
 def _build_output(

@@ -52,12 +52,17 @@
 !%          ``snow_module_present``    Presence of snow module
 !%          ``ntime_step``             Number of time steps
 !%          ``nd``                     Number of descriptor maps
-!%          ``hidden_neuron``          Number of neurons in the hidden layer
+!%          ``hidden_neuron``          Number of neurons in hidden layers
+!%          ``n_layers``               Number of trainable layers
 !%          ``nrrp``                   Number of rainfall-runoff parameters
 !%          ``nrrs``                   Number of rainfall-runoff states
 !%          ``nsep_mu``                Number of structural error parameters for mu
 !%          ``nsep_sigma``             Number of structural error parameters for sigma
 !%          ``nqz``                    Size of the temporal buffer for discharge grids
+!%          ``n_internal_fluxes``      Number of internal fluxes
+!%          ``n_snow_fluxes``          Number of internal fluxes of snow module
+!%          ``n_hydro_fluxes``         Number of internal fluxes of hydrological module
+!%          ``n_routing_fluxes``       Number of internal fluxes of routing module
 !%
 !%      Subroutine
 !%      ----------
@@ -133,8 +138,6 @@ module mwd_setup
         character(lchar) :: structure = "..." !$F90W char
         logical :: snow_module_present = .false.
 
-        integer, dimension(3) :: neurons = -99
-        integer :: hidden_neuron = -99
         integer :: ntime_step = -99
         integer :: nd = -99
         integer :: nrrp = -99
@@ -142,6 +145,14 @@ module mwd_setup
         integer :: nsep_mu = -99
         integer :: nsep_sigma = -99
         integer :: nqz = -99
+        integer :: n_internal_fluxes = -99
+        integer :: n_snow_fluxes = -99
+        integer :: n_hydro_fluxes = -99
+        integer :: n_routing_fluxes = -99
+
+        integer :: n_layers = -99
+        integer, dimension(2) :: hidden_neuron = -99
+        integer, dimension(4) :: neurons = -99
 
     end type SetupDT
 

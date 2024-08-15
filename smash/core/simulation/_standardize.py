@@ -15,6 +15,7 @@ from smash._constant import (
     DEFAULT_TERMINATION_CRIT,
     EVENT_SEG_KEYS,
     F90_OPTIMIZER_CONTROL_TFM,
+    F_PRECISION,
     FEASIBLE_RR_INITIAL_STATES,
     FEASIBLE_RR_PARAMETERS,
     FEASIBLE_SERR_MU_PARAMETERS,
@@ -26,6 +27,7 @@ from smash._constant import (
     MAPPING,
     MAPPING_OPTIMIZER,
     METRICS,
+    NN_PARAMETERS_KEYS,
     OPTIMIZABLE_NN_PARAMETERS,
     OPTIMIZABLE_RR_INITIAL_STATES,
     OPTIMIZABLE_RR_PARAMETERS,
@@ -108,7 +110,7 @@ def _standardize_simulation_samples(model: Model, samples: Samples) -> Samples:
             arr = getattr(samples, key)
             low_arr = np.min(arr)
             upp_arr = np.max(arr)
-            if low_arr <= low or upp_arr >= upp:
+            if (low_arr + F_PRECISION) <= low or (upp_arr - F_PRECISION) >= upp:
                 raise ValueError(
                     f"Invalid sample values for parameter '{key}'. Sample domain [{low_arr}, {upp_arr}] is "
                     f"not included in the feasible domain ]{low}, {upp}["
@@ -122,8 +124,6 @@ def _standardize_simulation_samples(model: Model, samples: Samples) -> Samples:
 def _standardize_simulation_optimize_options_parameters(
     model: Model, func_name: str, parameters: str | ListLike | None, **kwargs
 ) -> np.ndarray:
-    is_hybrid_structure = sum(model.setup.neurons) > 0
-
     is_bayesian = "bayesian" in func_name
 
     available_rr_parameters = [
@@ -142,27 +142,20 @@ def _standardize_simulation_optimize_options_parameters(
         for key in SERR_SIGMA_MAPPING_PARAMETERS[model.setup.serr_sigma_mapping]
         if OPTIMIZABLE_SERR_SIGMA_PARAMETERS[key]
     ]
-    available_parameters = available_rr_parameters + available_rr_initial_states
+    available_nn_parameters = OPTIMIZABLE_NN_PARAMETERS[max(0, model.setup.n_layers - 1)]
 
-    if is_hybrid_structure:
-        available_parameters.extend(OPTIMIZABLE_NN_PARAMETERS)
+    available_parameters = available_rr_parameters + available_rr_initial_states + available_nn_parameters
 
     if is_bayesian:
         available_parameters.extend(available_serr_mu_parameters + available_serr_sigma_parameters)
 
     if parameters is None:
-        if is_bayesian:
-            parameters = np.array(
-                available_rr_parameters + available_serr_mu_parameters + available_serr_sigma_parameters,
-                ndmin=1,
-            )
-        elif (
-            is_hybrid_structure
-        ):  # hybrid structure is currently not working with bayes optim. TODO for later versions
-            parameters = np.array(available_rr_parameters + OPTIMIZABLE_NN_PARAMETERS, ndmin=1)
+        default_parameters = available_rr_parameters + available_nn_parameters
 
-        else:
-            parameters = np.array(available_rr_parameters, ndmin=1)
+        if is_bayesian:
+            default_parameters += available_serr_mu_parameters + available_serr_sigma_parameters
+
+        parameters = np.array(default_parameters, ndmin=1)
 
     else:
         if isinstance(parameters, (str, list, tuple, np.ndarray)):
@@ -191,7 +184,7 @@ def _standardize_simulation_optimize_options_parameters(
 def _standardize_simulation_optimize_options_bounds(
     model: Model, parameters: np.ndarray, bounds: dict | None, **kwargs
 ) -> dict:
-    bounded_parameters = [p for p in parameters if p not in OPTIMIZABLE_NN_PARAMETERS]
+    bounded_parameters = [p for p in parameters if p not in NN_PARAMETERS_KEYS]
 
     if bounds is None:
         bounds = {}
@@ -237,28 +230,36 @@ def _standardize_simulation_optimize_options_bounds(
         if key in model.rr_parameters.keys:
             arr = model.get_rr_parameters(key)
             low, upp = FEASIBLE_RR_PARAMETERS[key]
+            # Do not check if a value is inside the feasible domain outside of active cells
+            mask = model.mesh.active_cell == 1
         elif key in model.rr_initial_states.keys:
             arr = model.get_rr_initial_states(key)
             low, upp = FEASIBLE_RR_INITIAL_STATES[key]
+            # Do not check if a value is inside the feasible domain outside of active cells
+            mask = model.mesh.active_cell == 1
         elif key in model.serr_sigma_parameters.keys:
             arr = model.get_serr_sigma_parameters(key)
             low, upp = FEASIBLE_SERR_SIGMA_PARAMETERS[key]
+            # Check all values
+            mask = np.ones(arr.shape, dtype=bool)
         elif key in model.serr_mu_parameters.keys:
             arr = model.get_serr_mu_parameters(key)
             low, upp = FEASIBLE_SERR_MU_PARAMETERS[key]
+            # Check all values
+            mask = np.ones(arr.shape, dtype=bool)
         # % In case we have other kind of parameters. Should be unreachable.
         else:
             pass
 
-        low_arr = np.min(arr)
-        upp_arr = np.max(arr)
-        if (low_arr + 1e-3) < value[0] or (upp_arr - 1e-3) > value[1]:
+        low_arr = np.min(arr, where=mask, initial=np.inf)
+        upp_arr = np.max(arr, where=mask, initial=-np.inf)
+        if (low_arr + F_PRECISION) < value[0] or (upp_arr - F_PRECISION) > value[1]:
             raise ValueError(
                 f"Invalid bounds values for parameter '{key}'. Bounds domain [{value[0]}, {value[1]}] does "
                 f"not include parameter domain [{low_arr}, {upp_arr}] in bounds optimize_options"
             )
 
-        if value[0] <= low or value[1] >= upp:
+        if (value[0] + F_PRECISION) <= low or (value[1] - F_PRECISION) >= upp:
             raise ValueError(
                 f"Invalid bounds values for parameter '{key}'. Bounds domain [{value[0]}, {value[1]}] is not "
                 f"included in the feasible domain ]{low}, {upp}[ in bounds optimize_options"
@@ -1085,13 +1086,15 @@ def _standardize_simulation_return_options(model: Model, func_name: str, return_
 
 
 def _standardize_simulation_parameters_feasibility(model: Model):
+    mask = model.mesh.active_cell == 1
     for key in model.rr_parameters.keys:
         arr = model.get_rr_parameters(key)
         low, upp = FEASIBLE_RR_PARAMETERS[key]
-        low_arr = np.min(arr)
-        upp_arr = np.max(arr)
+        # Do not check if a value is inside the feasible domain outside of active cells
+        low_arr = np.min(arr, where=mask, initial=np.inf)
+        upp_arr = np.max(arr, where=mask, initial=-np.inf)
 
-        if low_arr <= low or upp_arr >= upp:
+        if (low_arr + F_PRECISION) <= low or (upp_arr - F_PRECISION) >= upp:
             raise ValueError(
                 f"Invalid value for model rr_parameter '{key}'. rr_parameter domain [{low_arr}, {upp_arr}] "
                 f"is not included in the feasible domain ]{low}, {upp}["
@@ -1100,10 +1103,11 @@ def _standardize_simulation_parameters_feasibility(model: Model):
     for key in model.rr_initial_states.keys:
         arr = model.get_rr_initial_states(key)
         low, upp = FEASIBLE_RR_INITIAL_STATES[key]
-        low_arr = np.min(arr)
-        upp_arr = np.max(arr)
+        # Do not check if a value is inside the feasible domain outside of active cells
+        low_arr = np.min(arr, where=mask, initial=np.inf)
+        upp_arr = np.max(arr, where=mask, initial=-np.inf)
 
-        if low_arr <= low or upp_arr >= upp:
+        if (low_arr + F_PRECISION) <= low or (upp_arr - F_PRECISION) >= upp:
             raise ValueError(
                 f"Invalid value for model rr_initial_state '{key}'. rr_initial_state domain "
                 f"[{low_arr}, {upp_arr}] is not included in the feasible domain ]{low}, {upp}["
@@ -1118,11 +1122,12 @@ def _standardize_simulation_parameters_feasibility(model: Model):
         low_arr = np.min(arr)
         upp_arr = np.max(arr)
 
-        if low_arr <= low or upp_arr >= upp:
+        if (low_arr + F_PRECISION) <= low or (upp_arr - F_PRECISION) >= upp:
             raise ValueError(
                 f"Invalid value for model serr_mu_parameter '{key}'. serr_mu_parameter domain "
                 f"[{low_arr}, {upp_arr}] is not included in the feasible domain ]{low}, {upp}["
             )
+
     for key in model.serr_sigma_parameters.keys:
         arr = model.get_serr_sigma_parameters(key)
         # % Skip if size == 0, i.e. no gauge
@@ -1132,7 +1137,7 @@ def _standardize_simulation_parameters_feasibility(model: Model):
         low_arr = np.min(arr)
         upp_arr = np.max(arr)
 
-        if low_arr <= low or upp_arr >= upp:
+        if (low_arr + F_PRECISION) <= low or (upp_arr - F_PRECISION) >= upp:
             raise ValueError(
                 f"Invalid value for model serr_sigma_parameter '{key}'. serr_sigma_parameter domain "
                 f"[{low_arr}, {upp_arr}] is not included in the feasible domain ]{low}, {upp}["
@@ -1194,9 +1199,9 @@ def _standardize_simulation_optimize_options_finalize(
                         optimize_options["rr_initial_states_descriptor"][j, i] = 1
 
     # % nn parameters
-    optimize_options["nn_parameters"] = np.zeros(shape=len(OPTIMIZABLE_NN_PARAMETERS), dtype=np.int32)
+    optimize_options["nn_parameters"] = np.zeros(shape=len(NN_PARAMETERS_KEYS), dtype=np.int32)
 
-    for i, key in enumerate(OPTIMIZABLE_NN_PARAMETERS):
+    for i, key in enumerate(NN_PARAMETERS_KEYS):
         if key in optimize_options["parameters"]:
             optimize_options["nn_parameters"][i] = 1
 
