@@ -388,7 +388,7 @@ def _standardize_simulation_optimize_options_net(
             raise ValueError("net optimize_options: The graph has not been set yet")
 
     else:
-        raise TypeError("net optimize_options must be str or smash.Net object")
+        raise TypeError("net optimize_options must be a smash.factory.Net object")
 
     return net
 
