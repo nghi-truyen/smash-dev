@@ -17223,6 +17223,7 @@ CONTAINS
     END DO
   END SUBROUTINE GR5_TIME_STEP
 
+<<<<<<< HEAD
 !  Differentiation of gr5_mlp_time_step in forward (tangent) mode (with options fixinterface noISIZE context OpenMP):
 !   variations   of useful results: ac_qt ac_hi ac_hp ac_ht
 !   with respect to varying inputs: ac_kexc ac_ci ac_cp ac_ct bias_1
@@ -17820,6 +17821,8 @@ CONTAINS
     END DO
   END SUBROUTINE GR5_MLP_TIME_STEP
 
+=======
+>>>>>>> upstream/main
 !  Differentiation of gr5_ri_time_step in forward (tangent) mode (with options fixinterface noISIZE context OpenMP):
 !   variations   of useful results: ac_qt ac_hi ac_hp ac_ht
 !   with respect to varying inputs: ac_kexc ac_ci ac_cp ac_ct ac_alpha1
@@ -17889,9 +17892,15 @@ CONTAINS
 &                             ac_cp_d(k), beta, ac_alpha1(k), &
 &                             ac_alpha1_d(k), ac_hp(k), ac_hp_d(k), pr, &
 &                             pr_d, perc, perc_d, setup%dt)
+<<<<<<< HEAD
             CALL GR_THRESHOLD_EXCHANGE_D(0._sp, 0.0_4, ac_kexc(k), &
 &                                  ac_kexc_d(k), ac_aexc(k), ac_aexc_d(k&
 &                                  ), ac_ht(k), ac_ht_d(k), l, l_d)
+=======
+            CALL GR_THRESHOLD_EXCHANGE_D(ac_kexc(k), ac_kexc_d(k), &
+&                                  ac_aexc(k), ac_aexc_d(k), ac_ht(k), &
+&                                  ac_ht_d(k), l, l_d)
+>>>>>>> upstream/main
           ELSE
             pr = 0._sp
             perc = 0._sp
@@ -17965,7 +17974,10 @@ CONTAINS
 &   , split_b
     INTRINSIC TANH
     INTRINSIC MAX
+<<<<<<< HEAD
     REAL(sp) :: dummydiff_b
+=======
+>>>>>>> upstream/main
     REAL(sp) :: temp_b
     INTEGER :: branch
     INTEGER :: chunk_start
@@ -18001,8 +18013,13 @@ CONTAINS
             CALL PUSHREAL4(ac_hp(k))
             CALL GR_RI_PRODUCTION(pn, en, ac_cp(k), beta, ac_alpha1(k), &
 &                           ac_hp(k), pr, perc, setup%dt)
+<<<<<<< HEAD
             CALL GR_THRESHOLD_EXCHANGE(0._sp, ac_kexc(k), ac_aexc(k), &
 &                                ac_ht(k), l)
+=======
+            CALL GR_THRESHOLD_EXCHANGE(ac_kexc(k), ac_aexc(k), ac_ht(k)&
+&                                , l)
+>>>>>>> upstream/main
             CALL PUSHCONTROL1B(1)
           ELSE
             CALL PUSHREAL4(pr)
@@ -18102,9 +18119,15 @@ CONTAINS
             CALL POPREAL4(perc)
             CALL POPREAL4(pr)
           ELSE
+<<<<<<< HEAD
             CALL GR_THRESHOLD_EXCHANGE_B(0._sp, dummydiff_b, ac_kexc(k)&
 &                                  , ac_kexc_b(k), ac_aexc(k), ac_aexc_b&
 &                                  (k), ac_ht(k), ac_ht_b(k), l, l_b)
+=======
+            CALL GR_THRESHOLD_EXCHANGE_B(ac_kexc(k), ac_kexc_b(k), &
+&                                  ac_aexc(k), ac_aexc_b(k), ac_ht(k), &
+&                                  ac_ht_b(k), l, l_b)
+>>>>>>> upstream/main
             CALL POPREAL4(ac_hp(k))
             CALL POPREAL4(pr)
             CALL POPREAL4(perc)
@@ -18170,8 +18193,13 @@ CONTAINS
 &                          k), pn, en)
             CALL GR_RI_PRODUCTION(pn, en, ac_cp(k), beta, ac_alpha1(k), &
 &                           ac_hp(k), pr, perc, setup%dt)
+<<<<<<< HEAD
             CALL GR_THRESHOLD_EXCHANGE(0._sp, ac_kexc(k), ac_aexc(k), &
 &                                ac_ht(k), l)
+=======
+            CALL GR_THRESHOLD_EXCHANGE(ac_kexc(k), ac_aexc(k), ac_ht(k)&
+&                                , l)
+>>>>>>> upstream/main
           ELSE
             pr = 0._sp
             perc = 0._sp
@@ -25462,6 +25490,59 @@ CONTAINS
         checkpoint_variable%ac_rr_states(:, rr_states_inc+3) = h3
         rr_parameters_inc = rr_parameters_inc + 4
         rr_states_inc = rr_states_inc + 3
+      CASE ('gr4_ri') 
+! 'gr4_ri' module
+! % To avoid potential aliasing tapenade warning (DF02)
+! % hi
+        h1_d = checkpoint_variable_d%ac_rr_states(:, rr_states_inc+1)
+        h1 = checkpoint_variable%ac_rr_states(:, rr_states_inc+1)
+! % hp
+        h2_d = checkpoint_variable_d%ac_rr_states(:, rr_states_inc+2)
+        h2 = checkpoint_variable%ac_rr_states(:, rr_states_inc+2)
+! % ht
+        h3_d = checkpoint_variable_d%ac_rr_states(:, rr_states_inc+3)
+        h3 = checkpoint_variable%ac_rr_states(:, rr_states_inc+3)
+! % ci
+! % cp
+! % ct
+! % alpha1
+! % alpha2
+! % kexc
+! % hi
+! % hp
+! % ht
+        CALL GR4_RI_TIME_STEP_D(setup, mesh, input_data, options, &
+&                         returns, t, checkpoint_variable%ac_mlt, &
+&                         checkpoint_variable_d%ac_mlt, &
+&                         checkpoint_variable%ac_rr_parameters(:, &
+&                         rr_parameters_inc+1), checkpoint_variable_d%&
+&                         ac_rr_parameters(:, rr_parameters_inc+1), &
+&                         checkpoint_variable%ac_rr_parameters(:, &
+&                         rr_parameters_inc+2), checkpoint_variable_d%&
+&                         ac_rr_parameters(:, rr_parameters_inc+2), &
+&                         checkpoint_variable%ac_rr_parameters(:, &
+&                         rr_parameters_inc+3), checkpoint_variable_d%&
+&                         ac_rr_parameters(:, rr_parameters_inc+3), &
+&                         checkpoint_variable%ac_rr_parameters(:, &
+&                         rr_parameters_inc+4), checkpoint_variable_d%&
+&                         ac_rr_parameters(:, rr_parameters_inc+4), &
+&                         checkpoint_variable%ac_rr_parameters(:, &
+&                         rr_parameters_inc+5), checkpoint_variable_d%&
+&                         ac_rr_parameters(:, rr_parameters_inc+5), &
+&                         checkpoint_variable%ac_rr_parameters(:, &
+&                         rr_parameters_inc+6), checkpoint_variable_d%&
+&                         ac_rr_parameters(:, rr_parameters_inc+6), h1, &
+&                         h1_d, h2, h2_d, h3, h3_d, checkpoint_variable%&
+&                         ac_qtz(:, setup%nqz), checkpoint_variable_d%&
+&                         ac_qtz(:, setup%nqz))
+        checkpoint_variable_d%ac_rr_states(:, rr_states_inc+1) = h1_d
+        checkpoint_variable%ac_rr_states(:, rr_states_inc+1) = h1
+        checkpoint_variable_d%ac_rr_states(:, rr_states_inc+2) = h2_d
+        checkpoint_variable%ac_rr_states(:, rr_states_inc+2) = h2
+        checkpoint_variable_d%ac_rr_states(:, rr_states_inc+3) = h3_d
+        checkpoint_variable%ac_rr_states(:, rr_states_inc+3) = h3
+        rr_parameters_inc = rr_parameters_inc + 6
+        rr_states_inc = rr_states_inc + 3
       CASE ('gr4_mlp') 
 ! 'gr4_mlp' module
 ! % To avoid potential aliasing tapenade warning (DF02)
@@ -25726,6 +25807,7 @@ CONTAINS
         checkpoint_variable%ac_rr_states(:, rr_states_inc+3) = h3
         rr_parameters_inc = rr_parameters_inc + 5
         rr_states_inc = rr_states_inc + 3
+<<<<<<< HEAD
       CASE ('gr5_mlp') 
 ! 'gr5_mlp' module
 ! % To avoid potential aliasing tapenade warning (DF02)
@@ -25848,6 +25930,9 @@ CONTAINS
         rr_states_inc = rr_states_inc + 3
       CASE ('gr5_ri') 
 ! 'gr5_ri' module
+=======
+      CASE ('gr5_ri') 
+>>>>>>> upstream/main
 ! % To avoid potential aliasing tapenade warning (DF02)
 ! % hi
         h1_d = checkpoint_variable_d%ac_rr_states(:, rr_states_inc+1)
@@ -26552,7 +26637,54 @@ CONTAINS
         rr_parameters_inc = rr_parameters_inc + 4
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 3
+<<<<<<< HEAD
         CALL PUSHCONTROL5B(1)
+=======
+        CALL PUSHCONTROL4B(1)
+      CASE ('gr4_ri') 
+! 'gr4_ri' module
+! % To avoid potential aliasing tapenade warning (DF02)
+! % hi
+        h1 = checkpoint_variable%ac_rr_states(:, rr_states_inc+1)
+! % hp
+        h2 = checkpoint_variable%ac_rr_states(:, rr_states_inc+2)
+! % ht
+        h3 = checkpoint_variable%ac_rr_states(:, rr_states_inc+3)
+! % ci
+! % cp
+! % ct
+! % alpha1
+! % alpha2
+! % kexc
+! % hi
+! % hp
+! % ht
+        CALL PUSHREAL4ARRAY(checkpoint_variable%ac_qtz(:, setup%nqz), &
+&                     SIZE(checkpoint_variable%ac_qtz, 1))
+        CALL PUSHREAL4ARRAY(h3, mesh%nac)
+        CALL PUSHREAL4ARRAY(h2, mesh%nac)
+        CALL PUSHREAL4ARRAY(h1, mesh%nac)
+        CALL GR4_RI_TIME_STEP(setup, mesh, input_data, options, returns&
+&                       , t, checkpoint_variable%ac_mlt, &
+&                       checkpoint_variable%ac_rr_parameters(:, &
+&                       rr_parameters_inc+1), checkpoint_variable%&
+&                       ac_rr_parameters(:, rr_parameters_inc+2), &
+&                       checkpoint_variable%ac_rr_parameters(:, &
+&                       rr_parameters_inc+3), checkpoint_variable%&
+&                       ac_rr_parameters(:, rr_parameters_inc+4), &
+&                       checkpoint_variable%ac_rr_parameters(:, &
+&                       rr_parameters_inc+5), checkpoint_variable%&
+&                       ac_rr_parameters(:, rr_parameters_inc+6), h1, h2&
+&                       , h3, checkpoint_variable%ac_qtz(:, setup%nqz))
+        checkpoint_variable%ac_rr_states(:, rr_states_inc+1) = h1
+        checkpoint_variable%ac_rr_states(:, rr_states_inc+2) = h2
+        checkpoint_variable%ac_rr_states(:, rr_states_inc+3) = h3
+        CALL PUSHINTEGER4(rr_parameters_inc)
+        rr_parameters_inc = rr_parameters_inc + 6
+        CALL PUSHINTEGER4(rr_states_inc)
+        rr_states_inc = rr_states_inc + 3
+        CALL PUSHCONTROL4B(2)
+>>>>>>> upstream/main
       CASE ('gr4_mlp') 
 ! 'gr4_mlp' module
 ! % To avoid potential aliasing tapenade warning (DF02)
@@ -26595,6 +26727,7 @@ CONTAINS
         rr_parameters_inc = rr_parameters_inc + 4
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 3
+<<<<<<< HEAD
         CALL PUSHCONTROL5B(2)
       CASE ('gr4_ri') 
 ! 'gr4_ri' module
@@ -26639,6 +26772,9 @@ CONTAINS
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 3
         CALL PUSHCONTROL5B(3)
+=======
+        CALL PUSHCONTROL4B(3)
+>>>>>>> upstream/main
       CASE ('gr4_ode') 
 ! 'gr4_ode' module
 ! % To avoid potential aliasing tapenade warning (DF02)
@@ -26677,7 +26813,11 @@ CONTAINS
         rr_parameters_inc = rr_parameters_inc + 4
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 3
+<<<<<<< HEAD
         CALL PUSHCONTROL5B(4)
+=======
+        CALL PUSHCONTROL4B(4)
+>>>>>>> upstream/main
       CASE ('gr4_ode_mlp') 
 ! 'gr4_ode_mlp' module
 ! % To avoid potential aliasing tapenade warning (DF02)
@@ -26721,7 +26861,11 @@ CONTAINS
         rr_parameters_inc = rr_parameters_inc + 4
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 3
+<<<<<<< HEAD
         CALL PUSHCONTROL5B(5)
+=======
+        CALL PUSHCONTROL4B(5)
+>>>>>>> upstream/main
       CASE ('gr5') 
 ! 'gr5' module
 ! % To avoid potential aliasing tapenade warning (DF02)
@@ -26761,6 +26905,7 @@ CONTAINS
         rr_parameters_inc = rr_parameters_inc + 5
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 3
+<<<<<<< HEAD
         CALL PUSHCONTROL5B(6)
       CASE ('gr5_mlp') 
 ! 'gr5_mlp' module
@@ -26856,6 +27001,10 @@ CONTAINS
         CALL PUSHCONTROL5B(8)
       CASE ('gr5_ri') 
 ! 'gr5_ri' module
+=======
+        CALL PUSHCONTROL4B(6)
+      CASE ('gr5_ri') 
+>>>>>>> upstream/main
 ! % To avoid potential aliasing tapenade warning (DF02)
 ! % hi
         h1 = checkpoint_variable%ac_rr_states(:, rr_states_inc+1)
@@ -26899,7 +27048,11 @@ CONTAINS
         rr_parameters_inc = rr_parameters_inc + 7
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 3
+<<<<<<< HEAD
         CALL PUSHCONTROL5B(9)
+=======
+        CALL PUSHCONTROL4B(7)
+>>>>>>> upstream/main
       CASE ('gr6') 
 ! 'gr6' module
 ! % To avoid potential aliasing tapenade warning (DF02)
@@ -26947,6 +27100,7 @@ CONTAINS
         rr_parameters_inc = rr_parameters_inc + 6
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 4
+<<<<<<< HEAD
         CALL PUSHCONTROL5B(10)
       CASE ('gr6_mlp') 
 ! 'gr6_mlp' module
@@ -27001,6 +27155,9 @@ CONTAINS
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 4
         CALL PUSHCONTROL5B(11)
+=======
+        CALL PUSHCONTROL4B(8)
+>>>>>>> upstream/main
       CASE ('grc') 
 ! 'grc' module
 ! % To avoid potential aliasing tapenade warning (DF02)
@@ -27045,6 +27202,7 @@ CONTAINS
         rr_parameters_inc = rr_parameters_inc + 5
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 4
+<<<<<<< HEAD
         CALL PUSHCONTROL5B(12)
       CASE ('grc_mlp') 
 ! 'grc_mlp' module
@@ -27097,6 +27255,9 @@ CONTAINS
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 4
         CALL PUSHCONTROL5B(13)
+=======
+        CALL PUSHCONTROL4B(9)
+>>>>>>> upstream/main
       CASE ('grd') 
 ! 'grd' module
 ! % To avoid potential aliasing tapenade warning (DF02)
@@ -27124,6 +27285,7 @@ CONTAINS
         rr_parameters_inc = rr_parameters_inc + 2
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 2
+<<<<<<< HEAD
         CALL PUSHCONTROL5B(14)
       CASE ('grd_mlp') 
 ! 'grd_mlp' module
@@ -27158,6 +27320,9 @@ CONTAINS
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 2
         CALL PUSHCONTROL5B(15)
+=======
+        CALL PUSHCONTROL4B(10)
+>>>>>>> upstream/main
       CASE ('loieau') 
 ! 'loieau' module
 ! % To avoid potential aliasing tapenade warning (DF02)
@@ -27188,6 +27353,7 @@ CONTAINS
         rr_parameters_inc = rr_parameters_inc + 3
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 2
+<<<<<<< HEAD
         CALL PUSHCONTROL5B(16)
       CASE ('loieau_mlp') 
 ! 'loieau_mlp' module
@@ -27226,6 +27392,9 @@ CONTAINS
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 2
         CALL PUSHCONTROL5B(17)
+=======
+        CALL PUSHCONTROL4B(11)
+>>>>>>> upstream/main
       CASE ('vic3l') 
 ! 'vic3l' module
 ! % To avoid potential aliasing tapenade warning (DF02)
@@ -27281,7 +27450,11 @@ CONTAINS
         rr_parameters_inc = rr_parameters_inc + 9
         CALL PUSHINTEGER4(rr_states_inc)
         rr_states_inc = rr_states_inc + 4
+<<<<<<< HEAD
         CALL PUSHCONTROL5B(18)
+=======
+        CALL PUSHCONTROL4B(12)
+>>>>>>> upstream/main
       CASE DEFAULT
         CALL PUSHCONTROL5B(0)
       END SELECT
@@ -27377,11 +27550,19 @@ CONTAINS
 &                     checkpoint_variable%ac_qz, checkpoint_variable_b%&
 &                     ac_qz)
       END IF
+<<<<<<< HEAD
       CALL POPCONTROL5B(branch)
       IF (branch .LT. 9) THEN
         IF (branch .LT. 4) THEN
           IF (branch .LT. 2) THEN
             IF (branch .NE. 0) THEN
+=======
+      CALL POPCONTROL4B(branch)
+      IF (branch .LT. 6) THEN
+        IF (branch .LT. 3) THEN
+          IF (branch .NE. 0) THEN
+            IF (branch .EQ. 1) THEN
+>>>>>>> upstream/main
               CALL POPINTEGER4(rr_states_inc)
               CALL POPINTEGER4(rr_parameters_inc)
               h3_b = 0.0_4
@@ -27431,6 +27612,7 @@ CONTAINS
               checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) = &
 &               checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) +&
 &               h1_b
+<<<<<<< HEAD
             END IF
           ELSE IF (branch .EQ. 2) THEN
             CALL POPINTEGER4(rr_states_inc)
@@ -27683,6 +27865,237 @@ CONTAINS
 &             h1_b
           END IF
         ELSE IF (branch .EQ. 6) THEN
+=======
+            ELSE
+              CALL POPINTEGER4(rr_states_inc)
+              CALL POPINTEGER4(rr_parameters_inc)
+              h3_b = 0.0_4
+              h3_b = checkpoint_variable_b%ac_rr_states(:, rr_states_inc&
+&               +3)
+              checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) = &
+&               0.0_4
+              h2_b = 0.0_4
+              h2_b = checkpoint_variable_b%ac_rr_states(:, rr_states_inc&
+&               +2)
+              checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2) = &
+&               0.0_4
+              h1_b = 0.0_4
+              h1_b = checkpoint_variable_b%ac_rr_states(:, rr_states_inc&
+&               +1)
+              checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) = &
+&               0.0_4
+              CALL POPREAL4ARRAY(h1, mesh%nac)
+              CALL POPREAL4ARRAY(h2, mesh%nac)
+              CALL POPREAL4ARRAY(h3, mesh%nac)
+              CALL POPREAL4ARRAY(checkpoint_variable%ac_qtz(:, setup%nqz&
+&                          ), SIZE(checkpoint_variable%ac_qtz, 1))
+              CALL GR4_RI_TIME_STEP_B(setup, mesh, input_data, options, &
+&                               returns, t, checkpoint_variable%ac_mlt, &
+&                               checkpoint_variable_b%ac_mlt, &
+&                               checkpoint_variable%ac_rr_parameters(:, &
+&                               rr_parameters_inc+1), &
+&                               checkpoint_variable_b%ac_rr_parameters(:&
+&                               , rr_parameters_inc+1), &
+&                               checkpoint_variable%ac_rr_parameters(:, &
+&                               rr_parameters_inc+2), &
+&                               checkpoint_variable_b%ac_rr_parameters(:&
+&                               , rr_parameters_inc+2), &
+&                               checkpoint_variable%ac_rr_parameters(:, &
+&                               rr_parameters_inc+3), &
+&                               checkpoint_variable_b%ac_rr_parameters(:&
+&                               , rr_parameters_inc+3), &
+&                               checkpoint_variable%ac_rr_parameters(:, &
+&                               rr_parameters_inc+4), &
+&                               checkpoint_variable_b%ac_rr_parameters(:&
+&                               , rr_parameters_inc+4), &
+&                               checkpoint_variable%ac_rr_parameters(:, &
+&                               rr_parameters_inc+5), &
+&                               checkpoint_variable_b%ac_rr_parameters(:&
+&                               , rr_parameters_inc+5), &
+&                               checkpoint_variable%ac_rr_parameters(:, &
+&                               rr_parameters_inc+6), &
+&                               checkpoint_variable_b%ac_rr_parameters(:&
+&                               , rr_parameters_inc+6), h1, h1_b, h2, &
+&                               h2_b, h3, h3_b, checkpoint_variable%&
+&                               ac_qtz(:, setup%nqz), &
+&                               checkpoint_variable_b%ac_qtz(:, setup%&
+&                               nqz))
+              checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) = &
+&               checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) +&
+&               h3_b
+              checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2) = &
+&               checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2) +&
+&               h2_b
+              checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) = &
+&               checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) +&
+&               h1_b
+            END IF
+          END IF
+        ELSE IF (branch .EQ. 3) THEN
+          CALL POPINTEGER4(rr_states_inc)
+          CALL POPINTEGER4(rr_parameters_inc)
+          h3_b = 0.0_4
+          h3_b = checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3)
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) = 0.0_4
+          h2_b = 0.0_4
+          h2_b = checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2)
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2) = 0.0_4
+          h1_b = 0.0_4
+          h1_b = checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1)
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) = 0.0_4
+          CALL POPREAL4ARRAY(h1, mesh%nac)
+          CALL POPREAL4ARRAY(h2, mesh%nac)
+          CALL POPREAL4ARRAY(h3, mesh%nac)
+          CALL POPREAL4ARRAY(checkpoint_variable%ac_qtz(:, setup%nqz), &
+&                      SIZE(checkpoint_variable%ac_qtz, 1))
+          CALL GR4_MLP_TIME_STEP_B(setup, mesh, input_data, options, &
+&                            returns, t, parameters%nn_parameters%&
+&                            weight_1, parameters_b%nn_parameters%&
+&                            weight_1, parameters%nn_parameters%bias_1, &
+&                            parameters_b%nn_parameters%bias_1, &
+&                            parameters%nn_parameters%weight_2, &
+&                            parameters_b%nn_parameters%weight_2, &
+&                            parameters%nn_parameters%bias_2, &
+&                            parameters_b%nn_parameters%bias_2, &
+&                            parameters%nn_parameters%weight_3, &
+&                            parameters_b%nn_parameters%weight_3, &
+&                            parameters%nn_parameters%bias_3, &
+&                            parameters_b%nn_parameters%bias_3, &
+&                            checkpoint_variable%ac_mlt, &
+&                            checkpoint_variable_b%ac_mlt, &
+&                            checkpoint_variable%ac_rr_parameters(:, &
+&                            rr_parameters_inc+1), checkpoint_variable_b&
+&                            %ac_rr_parameters(:, rr_parameters_inc+1), &
+&                            checkpoint_variable%ac_rr_parameters(:, &
+&                            rr_parameters_inc+2), checkpoint_variable_b&
+&                            %ac_rr_parameters(:, rr_parameters_inc+2), &
+&                            checkpoint_variable%ac_rr_parameters(:, &
+&                            rr_parameters_inc+3), checkpoint_variable_b&
+&                            %ac_rr_parameters(:, rr_parameters_inc+3), &
+&                            checkpoint_variable%ac_rr_parameters(:, &
+&                            rr_parameters_inc+4), checkpoint_variable_b&
+&                            %ac_rr_parameters(:, rr_parameters_inc+4), &
+&                            h1, h1_b, h2, h2_b, h3, h3_b, &
+&                            checkpoint_variable%ac_qtz(:, setup%nqz), &
+&                            checkpoint_variable_b%ac_qtz(:, setup%nqz))
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) = &
+&           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) + &
+&           h3_b
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2) = &
+&           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2) + &
+&           h2_b
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) = &
+&           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) + &
+&           h1_b
+        ELSE IF (branch .EQ. 4) THEN
+          CALL POPINTEGER4(rr_states_inc)
+          CALL POPINTEGER4(rr_parameters_inc)
+          h3_b = 0.0_4
+          h3_b = checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3)
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) = 0.0_4
+          h2_b = 0.0_4
+          h2_b = checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2)
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2) = 0.0_4
+          h1_b = 0.0_4
+          h1_b = checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1)
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) = 0.0_4
+          CALL POPREAL4ARRAY(h1, mesh%nac)
+          CALL POPREAL4ARRAY(h2, mesh%nac)
+          CALL POPREAL4ARRAY(h3, mesh%nac)
+          CALL POPREAL4ARRAY(checkpoint_variable%ac_qtz(:, setup%nqz), &
+&                      SIZE(checkpoint_variable%ac_qtz, 1))
+          CALL GR4_ODE_TIME_STEP_B(setup, mesh, input_data, options, &
+&                            returns, t, checkpoint_variable%ac_mlt, &
+&                            checkpoint_variable_b%ac_mlt, &
+&                            checkpoint_variable%ac_rr_parameters(:, &
+&                            rr_parameters_inc+1), checkpoint_variable_b&
+&                            %ac_rr_parameters(:, rr_parameters_inc+1), &
+&                            checkpoint_variable%ac_rr_parameters(:, &
+&                            rr_parameters_inc+2), checkpoint_variable_b&
+&                            %ac_rr_parameters(:, rr_parameters_inc+2), &
+&                            checkpoint_variable%ac_rr_parameters(:, &
+&                            rr_parameters_inc+3), checkpoint_variable_b&
+&                            %ac_rr_parameters(:, rr_parameters_inc+3), &
+&                            checkpoint_variable%ac_rr_parameters(:, &
+&                            rr_parameters_inc+4), checkpoint_variable_b&
+&                            %ac_rr_parameters(:, rr_parameters_inc+4), &
+&                            h1, h1_b, h2, h2_b, h3, h3_b, &
+&                            checkpoint_variable%ac_qtz(:, setup%nqz), &
+&                            checkpoint_variable_b%ac_qtz(:, setup%nqz))
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) = &
+&           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) + &
+&           h3_b
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2) = &
+&           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2) + &
+&           h2_b
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) = &
+&           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) + &
+&           h1_b
+        ELSE
+          CALL POPINTEGER4(rr_states_inc)
+          CALL POPINTEGER4(rr_parameters_inc)
+          h3_b = 0.0_4
+          h3_b = checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3)
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) = 0.0_4
+          h2_b = 0.0_4
+          h2_b = checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2)
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2) = 0.0_4
+          h1_b = 0.0_4
+          h1_b = checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1)
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) = 0.0_4
+          CALL POPREAL4ARRAY(h1, mesh%nac)
+          CALL POPREAL4ARRAY(h2, mesh%nac)
+          CALL POPREAL4ARRAY(h3, mesh%nac)
+          CALL POPREAL4ARRAY(checkpoint_variable%ac_qtz(:, setup%nqz), &
+&                      SIZE(checkpoint_variable%ac_qtz, 1))
+          CALL GR4_ODE_MLP_TIME_STEP_B(setup, mesh, input_data, options&
+&                                , returns, t, parameters%nn_parameters%&
+&                                weight_1, parameters_b%nn_parameters%&
+&                                weight_1, parameters%nn_parameters%&
+&                                bias_1, parameters_b%nn_parameters%&
+&                                bias_1, parameters%nn_parameters%&
+&                                weight_2, parameters_b%nn_parameters%&
+&                                weight_2, parameters%nn_parameters%&
+&                                bias_2, parameters_b%nn_parameters%&
+&                                bias_2, parameters%nn_parameters%&
+&                                weight_3, parameters_b%nn_parameters%&
+&                                weight_3, parameters%nn_parameters%&
+&                                bias_3, parameters_b%nn_parameters%&
+&                                bias_3, checkpoint_variable%ac_mlt, &
+&                                checkpoint_variable_b%ac_mlt, &
+&                                checkpoint_variable%ac_rr_parameters(:&
+&                                , rr_parameters_inc+1), &
+&                                checkpoint_variable_b%ac_rr_parameters(&
+&                                :, rr_parameters_inc+1), &
+&                                checkpoint_variable%ac_rr_parameters(:&
+&                                , rr_parameters_inc+2), &
+&                                checkpoint_variable_b%ac_rr_parameters(&
+&                                :, rr_parameters_inc+2), &
+&                                checkpoint_variable%ac_rr_parameters(:&
+&                                , rr_parameters_inc+3), &
+&                                checkpoint_variable_b%ac_rr_parameters(&
+&                                :, rr_parameters_inc+3), &
+&                                checkpoint_variable%ac_rr_parameters(:&
+&                                , rr_parameters_inc+4), &
+&                                checkpoint_variable_b%ac_rr_parameters(&
+&                                :, rr_parameters_inc+4), h1, h1_b, h2, &
+&                                h2_b, h3, h3_b, checkpoint_variable%&
+&                                ac_qtz(:, setup%nqz), &
+&                                checkpoint_variable_b%ac_qtz(:, setup%&
+&                                nqz))
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) = &
+&           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) + &
+&           h3_b
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2) = &
+&           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2) + &
+&           h2_b
+          checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) = &
+&           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) + &
+&           h1_b
+        END IF
+      ELSE IF (branch .LT. 9) THEN
+        IF (branch .EQ. 6) THEN
+>>>>>>> upstream/main
           CALL POPINTEGER4(rr_states_inc)
           CALL POPINTEGER4(rr_parameters_inc)
           h3_b = 0.0_4
@@ -27746,6 +28159,7 @@ CONTAINS
           CALL POPREAL4ARRAY(h3, mesh%nac)
           CALL POPREAL4ARRAY(checkpoint_variable%ac_qtz(:, setup%nqz), &
 &                      SIZE(checkpoint_variable%ac_qtz, 1))
+<<<<<<< HEAD
           CALL GR5_MLP_TIME_STEP_B(setup, mesh, input_data, options, &
 &                            returns, t, parameters%nn_parameters%&
 &                            weight_1, parameters_b%nn_parameters%&
@@ -27779,6 +28193,35 @@ CONTAINS
 &                            h1, h1_b, h2, h2_b, h3, h3_b, &
 &                            checkpoint_variable%ac_qtz(:, setup%nqz), &
 &                            checkpoint_variable_b%ac_qtz(:, setup%nqz))
+=======
+          CALL GR5_RI_TIME_STEP_B(setup, mesh, input_data, options, &
+&                           returns, t, checkpoint_variable%ac_mlt, &
+&                           checkpoint_variable_b%ac_mlt, &
+&                           checkpoint_variable%ac_rr_parameters(:, &
+&                           rr_parameters_inc+1), checkpoint_variable_b%&
+&                           ac_rr_parameters(:, rr_parameters_inc+1), &
+&                           checkpoint_variable%ac_rr_parameters(:, &
+&                           rr_parameters_inc+2), checkpoint_variable_b%&
+&                           ac_rr_parameters(:, rr_parameters_inc+2), &
+&                           checkpoint_variable%ac_rr_parameters(:, &
+&                           rr_parameters_inc+3), checkpoint_variable_b%&
+&                           ac_rr_parameters(:, rr_parameters_inc+3), &
+&                           checkpoint_variable%ac_rr_parameters(:, &
+&                           rr_parameters_inc+4), checkpoint_variable_b%&
+&                           ac_rr_parameters(:, rr_parameters_inc+4), &
+&                           checkpoint_variable%ac_rr_parameters(:, &
+&                           rr_parameters_inc+5), checkpoint_variable_b%&
+&                           ac_rr_parameters(:, rr_parameters_inc+5), &
+&                           checkpoint_variable%ac_rr_parameters(:, &
+&                           rr_parameters_inc+6), checkpoint_variable_b%&
+&                           ac_rr_parameters(:, rr_parameters_inc+6), &
+&                           checkpoint_variable%ac_rr_parameters(:, &
+&                           rr_parameters_inc+7), checkpoint_variable_b%&
+&                           ac_rr_parameters(:, rr_parameters_inc+7), h1&
+&                           , h1_b, h2, h2_b, h3, h3_b, &
+&                           checkpoint_variable%ac_qtz(:, setup%nqz), &
+&                           checkpoint_variable_b%ac_qtz(:, setup%nqz))
+>>>>>>> upstream/main
           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) = &
 &           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) + &
 &           h3_b
@@ -27789,6 +28232,7 @@ CONTAINS
 &           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) + &
 &           h1_b
         ELSE
+<<<<<<< HEAD
           CALL POPINTEGER4(rr_states_inc)
           CALL POPINTEGER4(rr_parameters_inc)
           h3_b = 0.0_4
@@ -27977,6 +28421,8 @@ CONTAINS
 &             h1_b
           END IF
         ELSE IF (branch .EQ. 11) THEN
+=======
+>>>>>>> upstream/main
           CALL POPINTEGER4(rr_states_inc)
           CALL POPINTEGER4(rr_parameters_inc)
           h4_b = 0.0_4
@@ -28045,7 +28491,13 @@ CONTAINS
           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) = &
 &           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) + &
 &           h1_b
+<<<<<<< HEAD
         ELSE IF (branch .EQ. 12) THEN
+=======
+        END IF
+      ELSE IF (branch .LT. 11) THEN
+        IF (branch .EQ. 9) THEN
+>>>>>>> upstream/main
           CALL POPINTEGER4(rr_states_inc)
           CALL POPINTEGER4(rr_parameters_inc)
           h4_b = 0.0_4
@@ -28102,12 +28554,15 @@ CONTAINS
         ELSE
           CALL POPINTEGER4(rr_states_inc)
           CALL POPINTEGER4(rr_parameters_inc)
+<<<<<<< HEAD
           h4_b = 0.0_4
           h4_b = checkpoint_variable_b%ac_rr_states(:, rr_states_inc+4)
           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+4) = 0.0_4
           h3_b = 0.0_4
           h3_b = checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3)
           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) = 0.0_4
+=======
+>>>>>>> upstream/main
           h2_b = 0.0_4
           h2_b = checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2)
           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2) = 0.0_4
@@ -28116,6 +28571,7 @@ CONTAINS
           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) = 0.0_4
           CALL POPREAL4ARRAY(h1, mesh%nac)
           CALL POPREAL4ARRAY(h2, mesh%nac)
+<<<<<<< HEAD
           CALL POPREAL4ARRAY(h3, mesh%nac)
           CALL POPREAL4ARRAY(h4, mesh%nac)
           CALL POPREAL4ARRAY(checkpoint_variable%ac_qtz(:, setup%nqz), &
@@ -28159,6 +28615,22 @@ CONTAINS
           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) = &
 &           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+3) + &
 &           h3_b
+=======
+          CALL POPREAL4ARRAY(checkpoint_variable%ac_qtz(:, setup%nqz), &
+&                      SIZE(checkpoint_variable%ac_qtz, 1))
+          CALL GRD_TIME_STEP_B(setup, mesh, input_data, options, returns&
+&                        , t, checkpoint_variable%ac_mlt, &
+&                        checkpoint_variable_b%ac_mlt, &
+&                        checkpoint_variable%ac_rr_parameters(:, &
+&                        rr_parameters_inc+1), checkpoint_variable_b%&
+&                        ac_rr_parameters(:, rr_parameters_inc+1), &
+&                        checkpoint_variable%ac_rr_parameters(:, &
+&                        rr_parameters_inc+2), checkpoint_variable_b%&
+&                        ac_rr_parameters(:, rr_parameters_inc+2), h1, &
+&                        h1_b, h2, h2_b, checkpoint_variable%ac_qtz(:, &
+&                        setup%nqz), checkpoint_variable_b%ac_qtz(:, &
+&                        setup%nqz))
+>>>>>>> upstream/main
           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2) = &
 &           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+2) + &
 &           h2_b
@@ -28166,6 +28638,7 @@ CONTAINS
 &           checkpoint_variable_b%ac_rr_states(:, rr_states_inc+1) + &
 &           h1_b
         END IF
+<<<<<<< HEAD
       ELSE IF (branch .LT. 16) THEN
         IF (branch .EQ. 14) THEN
           CALL POPINTEGER4(rr_states_inc)
@@ -28243,6 +28716,9 @@ CONTAINS
 &           h1_b
         END IF
       ELSE IF (branch .EQ. 16) THEN
+=======
+      ELSE IF (branch .EQ. 11) THEN
+>>>>>>> upstream/main
         CALL POPINTEGER4(rr_states_inc)
         CALL POPINTEGER4(rr_parameters_inc)
         h2_b = 0.0_4
@@ -28489,6 +28965,41 @@ CONTAINS
         checkpoint_variable%ac_rr_states(:, rr_states_inc+3) = h3
         rr_parameters_inc = rr_parameters_inc + 4
         rr_states_inc = rr_states_inc + 3
+      CASE ('gr4_ri') 
+! 'gr4_ri' module
+! % To avoid potential aliasing tapenade warning (DF02)
+! % hi
+        h1 = checkpoint_variable%ac_rr_states(:, rr_states_inc+1)
+! % hp
+        h2 = checkpoint_variable%ac_rr_states(:, rr_states_inc+2)
+! % ht
+        h3 = checkpoint_variable%ac_rr_states(:, rr_states_inc+3)
+! % ci
+! % cp
+! % ct
+! % alpha1
+! % alpha2
+! % kexc
+! % hi
+! % hp
+! % ht
+        CALL GR4_RI_TIME_STEP(setup, mesh, input_data, options, returns&
+&                       , t, checkpoint_variable%ac_mlt, &
+&                       checkpoint_variable%ac_rr_parameters(:, &
+&                       rr_parameters_inc+1), checkpoint_variable%&
+&                       ac_rr_parameters(:, rr_parameters_inc+2), &
+&                       checkpoint_variable%ac_rr_parameters(:, &
+&                       rr_parameters_inc+3), checkpoint_variable%&
+&                       ac_rr_parameters(:, rr_parameters_inc+4), &
+&                       checkpoint_variable%ac_rr_parameters(:, &
+&                       rr_parameters_inc+5), checkpoint_variable%&
+&                       ac_rr_parameters(:, rr_parameters_inc+6), h1, h2&
+&                       , h3, checkpoint_variable%ac_qtz(:, setup%nqz))
+        checkpoint_variable%ac_rr_states(:, rr_states_inc+1) = h1
+        checkpoint_variable%ac_rr_states(:, rr_states_inc+2) = h2
+        checkpoint_variable%ac_rr_states(:, rr_states_inc+3) = h3
+        rr_parameters_inc = rr_parameters_inc + 6
+        rr_states_inc = rr_states_inc + 3
       CASE ('gr4_mlp') 
 ! 'gr4_mlp' module
 ! % To avoid potential aliasing tapenade warning (DF02)
@@ -28658,6 +29169,7 @@ CONTAINS
         checkpoint_variable%ac_rr_states(:, rr_states_inc+3) = h3
         rr_parameters_inc = rr_parameters_inc + 5
         rr_states_inc = rr_states_inc + 3
+<<<<<<< HEAD
       CASE ('gr5_mlp') 
 ! 'gr5_mlp' module
 ! % To avoid potential aliasing tapenade warning (DF02)
@@ -28736,6 +29248,9 @@ CONTAINS
         rr_states_inc = rr_states_inc + 3
       CASE ('gr5_ri') 
 ! 'gr5_ri' module
+=======
+      CASE ('gr5_ri') 
+>>>>>>> upstream/main
 ! % To avoid potential aliasing tapenade warning (DF02)
 ! % hi
         h1 = checkpoint_variable%ac_rr_states(:, rr_states_inc+1)
