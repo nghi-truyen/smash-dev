@@ -51,7 +51,6 @@ def test_module_name():
     # % Check hydrological module
     assert HYDROLOGICAL_MODULE == [
         "gr4",
-        "gr4_ri",
         "gr4_mlp",
         "gr4_ri",
         "gr4_ode",
