@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 from scipy.optimize import minimize as scipy_minimize
 
+import time
+
 from smash._constant import (
     ADAPTIVE_OPTIMIZER,
     OPTIMIZER_CLASS,
@@ -697,6 +699,17 @@ def _adaptive_optimize(
         )
 
     for ite in range(1, maxiter + 1):
+        ts = time.time()
+        wrap_forward_run(
+            model.setup,
+            model.mesh,
+            model._input_data,
+            parameters.copy(),
+            model._output,
+            wrap_options.copy(),
+            wrap_returns.copy(),
+        )
+        t_forward = time.time() - ts
         # % Gradient-based parameter update
         x = adap_opt.update(x, grad)
 
@@ -707,7 +720,9 @@ def _adaptive_optimize(
         # % Set control values and run adjoint model to get new gradients
         setattr(parameters.control, "x", x)
 
+        ts = time.time()
         parameters_b = _get_parameters_b(model, parameters, wrap_options, wrap_returns)
+        t_backward = time.time() - ts
         grad = parameters_b.control.x.copy()
 
         projg = _inf_norm(grad)
@@ -734,7 +749,8 @@ def _adaptive_optimize(
         if callback is not None:
             callback(
                 iopt=Optimize(
-                    {"control_vector": np.copy(x), "cost": model._output.cost, "n_iter": ite, "projg": projg}
+                    {"control_vector": np.copy(x), "cost": model._output.cost, "n_iter": ite, "projg": projg,
+                     "t_forward": t_forward, "t_backward": t_backward}
                 )
             )
 

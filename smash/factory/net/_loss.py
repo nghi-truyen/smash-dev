@@ -13,6 +13,10 @@ from smash.fcore._mwd_parameters_manipulation import (
     parameters_to_control as wrap_parameters_to_control,
 )
 
+from smash.fcore._mw_forward import forward_run as wrap_forward_run
+
+import time
+
 if TYPE_CHECKING:
     from smash.core.model.model import Model
     from smash.factory.net.net import Net
@@ -39,6 +43,18 @@ def _get_gradient_value(
     # % Change the mapping to trigger distributed control to get distributed gradients
     wrap_options.optimize.mapping = "distributed"
 
+    ts = time.time()
+    wrap_forward_run(
+                instance.setup,
+                instance.mesh,
+                instance._input_data,
+                parameters.copy(),
+                instance._output,
+                wrap_options.copy(),
+                wrap_returns.copy(),
+            )
+    t_forward = time.time() - ts
+
     # % Run adjoint model
     wrap_parameters_to_control(
         instance.setup,
@@ -47,7 +63,9 @@ def _get_gradient_value(
         parameters,
         wrap_options,
     )
+    ts = time.time()
     parameters_b = _get_parameters_b(instance, parameters, wrap_options, wrap_returns)
+    t_backward = time.time() - ts
 
     wrap_control_to_parameters(
         instance.setup, instance.mesh, instance._input_data, parameters_b, wrap_options
@@ -84,4 +102,4 @@ def _get_gradient_value(
         for key in OPTIMIZABLE_NN_PARAMETERS[max(0, instance.setup.n_layers - 1)]
     ]
 
-    return (grad_d2p, grad_pmtz)
+    return (grad_d2p, grad_pmtz, t_forward, t_backward)

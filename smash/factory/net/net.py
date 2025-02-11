@@ -544,7 +544,7 @@ class Net(object):
         # calculate the gradient of J wrt rr_parameters and rr_initial_states
         # that are the output of the descriptors-to-parameters (d2p) NN
         # and get the gradient of the pmtz NN (pmtz) if used
-        grad_d2p_init, grad_pmtz = _get_gradient_value(
+        grad_d2p_init, grad_pmtz, _, _ = _get_gradient_value(
             self, x_train, calibrated_parameters, instance, parameters, wrap_options, wrap_returns
         )
         grad_d2p = self._backward_pass(grad_d2p_init, inplace=False)  # do not update weight and bias
@@ -583,7 +583,7 @@ class Net(object):
             self._backward_pass(grad_d2p_init, inplace=True)  # update weights of the d2p NN
 
             # cost and gradient computation
-            grad_d2p_init, grad_pmtz = _get_gradient_value(
+            grad_d2p_init, grad_pmtz, t_forward, t_backward = _get_gradient_value(
                 self, x_train, calibrated_parameters, instance, parameters, wrap_options, wrap_returns
             )
             grad_d2p = self._backward_pass(grad_d2p_init, inplace=False)  # do not update weight and bias
@@ -636,6 +636,8 @@ class Net(object):
                             "n_iter": ite,
                             "projg": projg,
                             "net": self.copy(),
+                            "t_forward": t_forward,
+                            "t_backward": t_backward,
                         }
                     )
                 )
