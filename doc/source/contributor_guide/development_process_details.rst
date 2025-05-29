@@ -43,38 +43,46 @@ to ensure you have the latest package versions and to prevent any conflicts:
     (smash-dev) python3 -m pip install --upgrade pip
     (smash-dev) conda update --all
 
-Linux
-'''''
 
-If you want to use the system Python and pip, you will need:
+.. tab-set::
 
-- C and Fortran compilers (typically ``gcc`` and ``gfortran``).
+    .. tab-item:: Linux
 
-- Python header files (typically a package named ``python3-dev`` or ``python3-devel``)
+        If you want to use the system Python and pip, you will need:
 
-- Java Runtime Environment (typically ``openjdk-17-jdk``)
+        - C and Fortran compilers (typically ``gcc`` and ``gfortran``).
 
-This can be installed on **Ubuntu/Debian Linux**:
+        - Python header files (typically a package named ``python3-dev`` or ``python3-devel``)
 
-.. code-block:: none
+        - Java Runtime Environment (typically ``openjdk-17-jdk``)
 
-    sudo apt-get install -y build-essential gfortran python3-pip python3-dev openjdk-17-jdk
+        This can be installed on **Ubuntu/Debian Linux**:
 
-.. note::
+        .. code-block:: none
 
-    - ``build-essential`` is used to install ``gcc`` and ``make``. ``make`` is optionnal but a ``Makefile`` is
-      available to build `smash`, generate the documentation, generate the adjoint code, run the tests and
-      format the source code.
+            sudo apt-get install -y build-essential gfortran python3-pip python3-dev openjdk-17-jdk
 
-    - ``openjdk-17-jdk`` is used to generate the adjoint with `Tapenade <https://team.inria.fr/ecuador/en/tapenade/>`__
+        .. note::
 
-Windows
-'''''''
+            - ``build-essential`` is used to install ``gcc`` and ``make``. ``make`` is optionnal but a ``Makefile`` is
+              available to build `smash`, generate the documentation, generate the adjoint code, run the tests and
+              format the source code.
 
-.. warning::
-    
-    Section in development. Information on compiling `smash` under **Windows** can be found in the
-    ``pyproject.toml``, ``meson.build`` and ``wheel.yml`` workflow.
+            - ``openjdk-17-jdk`` is used to generate the adjoint with `Tapenade <https://team.inria.fr/ecuador/en/tapenade/>`__
+
+    .. tab-item:: macOS
+
+        .. warning::
+
+            Section in development. Information on compiling `smash` under **macOS** can be found in the
+            ``pyproject.toml``, ``meson.build`` and ``wheel.yml`` workflow.
+
+    .. tab-item:: Windows
+
+        .. warning::
+
+            Section in development. Information on compiling `smash` under **Windows** can be found in the
+            ``pyproject.toml``, ``meson.build`` and ``wheel.yml`` workflow.
 
 Build
 *****
@@ -111,7 +119,7 @@ Once the system-level dependencies installed and the git cloned, `smash` can be 
     that needs to be differentiated, you will still need to regenerate the adjoint code. See the section
     :ref:`contributor_guide.development_process_details.build_from_source.automatic_differentiation`
 
-On **Linux**, `smash` can be built with or without dependency on `OpenMP <https://www.openmp.org/>`__.
+On **Linux** and **macOS**, `smash` can be built with or without dependency on `OpenMP <https://www.openmp.org/>`__.
 By default, the dependency is activated. To build without it, simply add the following option to the build command:
 
 .. code-block:: none
@@ -1738,13 +1746,138 @@ Then, you need to call up this file in the desired toctree, for example in the f
 User guide
 **********
 
-The user guide contains all the `smash` tutorials. These tutorials are not hardcoded, the python commands written in the
-``.. ipython:: python`` directives are executed and automatically generate the tutorial output. This is quite handy, as it means you don't have to 
-update the documentation each time the source is modified, and adds an extra layer of testing since the documentation will not compile if 
-there is an error in executing a python command but which, on the other hand, requires a certain amount of computing time.
+The user guide contains tutorials with code examples and explanations of various functionalities of `smash`.
+There are two approaches for writing a tutorial: using the ``.. ipython:: python`` directive or using the ``.. code-block:: python`` directive. 
+The choice between these depends on the complexity and runtime of the tutorial.
+
+- ipython:
+    The ``.. ipython:: python`` directive is more suitable for tutorials that execute quickly.
+    Since Python commands within this directive are run during documentation compilation, outputs are automatically generated.
+    This ensures that the documentation stays up to date without manual updates whenever the source code changes.
+    Additionally, it acts as an extra layer of validation, as the documentation compilation will fail if there are execution errors in any code directive.
+    However, this approach requires additional computation time during documentation building. Here is an example:
+
+    .. code-block:: rst
+
+        .. ipython:: python
+
+            text = "smash developer"
+            text
+
+    The output of the ipython directive is automatically generated when the documentation is compiled.
+
+- code block:
+    The ``.. code-block:: python`` directive is better suited for longer or more complex tutorials where execution time (e.g., model calibration) or dependency on external packages (e.g., hyper-parameter sensitivity estimation using `SALib <https://salib.readthedocs.io/>`__) is a concern.
+    It allows you to include static code snippets without running them during documentation generation.
+    The code should start with ``>>>`` and use ``...`` for continuation lines or within loops/functions.
+
+    .. code-block:: rst
+
+        .. code-block:: python
+
+            >>> def linear_transform(x, a=23, b=5):  
+            ...     y = a * x + b  
+            ...     return y
+            ... 
+            >>> x = -1
+            >>> y = linear_transform(-1) 
+
+    Since the code is not executed, the outputs are not automatically generated. Alternative solutions include using the ``.. code-block:: output`` directive to include output blocks and the ``.. image::`` directive to include figures.
+
+    .. code-block:: rst
+
+        .. code-block:: python
+        
+            >>> text = "smash developer"
+            >>> text
+        
+        .. code-block:: output
+
+            smash developer
+
+    However, this approach may result in outdated documentation if the source code changes.
+    To automatically generate/update output blocks and verify correctness in code blocks, it is highly recommended to use ``doc/source/user_guide/pyexec_rst.py``.
+    This script extracts Python code blocks from the ``rst`` file, executes them, and updates the output accordingly.
+    For example, consider a file named ``doc/source/user_guide/in_depth/foo.rst``:
+
+    .. code-block:: rst
+    
+        .. code-block:: python
+
+            >>> text = "smash developer"
+            >>> text
+    
+        .. code-block:: output
+
+            type any text here
+
+    To extract and execute the Python code from the ``rst`` file, and generate/update the output block:
+
+    .. code-block:: shell
+
+        python3 pyexec_rst.py in_depth/foo.rst
+
+    The output is written in the ``doc/source/user_guide/in_depth/foo.rst`` file (if you choose to overwrite this file, otherwise a new file will be created).
+
+    .. code-block:: rst
+    
+        .. code-block:: python
+
+            >>> text = "smash developer"
+            >>> text
+
+        .. code-block:: output
+
+            smash developer
+
+    .. hint::
+        If you only want to display Python code without executing it when running the ``pyexec_rst.py`` script, use an alternative directive like ``.. code-block:: pycon``.  
+        This preserves Python code formatting while ensuring the script does not capture or execute it:
+
+        .. code-block:: rst
+
+            .. code-block:: pycon
+
+                >>> print("A pycon directive is not executed by pyexec_rst.py")
+
+    .. note::
+
+        Since the ``.. code-block:: python`` directive approach is more manual, it is recommended to add the path of the file written using this approach to ``doc/source/user_guide/files_with_code_block.csv`` (if not already included). 
+        This helps streamline the process of verifying and updating code snippets when the source code changes.
+        You will be asked to do so when running the ``pyexec_rst.py`` script.
 
 API reference
 *************
 
 Only the architecture of this section is defined in the ``rst`` files. The content is automatically generated from the docstrings of each
 `smash` function. The style guide used for the docstrings is that of  `numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html>`__.
+
+Backporting
+-----------
+
+This section is similar to the `Backporting <https://numpy.org/doc/stable/dev/development_workflow.html#backporting>`__
+section of `NumPy <https://numpy.org/doc/stable/index.html>`__. Below is a summary of the main commands to run:
+
+- First, you need to make the branch you will work on. This needs to be based on the older version of smash (not main):
+
+.. code-block:: shell
+
+    # Make a new branch based on smash/maintenance/1.0.x,
+    # backport-420 is our new name for the branch.
+    git checkout -b backport-420 maintenance/1.0.x
+
+- Now you need to apply the changes from main to this branch using ``git cherry-pick``:
+
+.. code-block:: shell
+
+    # This pull request included the commit aa7a047
+    git cherry-pick aa7a047
+    ...
+    # Fix any conflicts, then if needed:
+    git cherry-pick --continue
+
+- Push the new branch to your Github repository:
+
+.. code-block:: shell
+
+    git push -u origin backport-420

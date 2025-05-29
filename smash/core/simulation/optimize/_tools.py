@@ -60,7 +60,7 @@ def _get_control_info(
             value = value.copy()
         ret[attr] = value
 
-    for key in ["l", "u", "l_bkg", "u_bkg"]:
+    for key in ["l", "u", "l_raw", "u_raw"]:
         # Handle unbounded and semi-unbounded parameters
         if key.startswith("l"):
             ret[key] = np.where(np.isin(ret["nbd"], [0, 3]), -np.inf, ret[key])
@@ -106,7 +106,7 @@ def _merge_net_control(ret: dict, optimize_options: dict):
 
         ret["nbd"] = np.append(ret["nbd"], np.zeros(x_net_size))
 
-        for key in ["l", "u", "l_bkg", "u_bkg"]:
+        for key in ["l", "u", "l_raw", "u_raw"]:
             if key.startswith("l"):
                 value = -np.inf
             elif key.startswith("u"):
@@ -130,7 +130,7 @@ def _merge_net_control(ret: dict, optimize_options: dict):
 
         ret["x"] = np.append(ret["x"], x)
 
-        ret["x_bkg"] = np.append(ret["x_bkg"], x)  # no transformation applied to x
+        ret["x_raw"] = np.append(ret["x_raw"], x)  # no transformation applied to x
 
 
 def _net2vect(net: Net) -> np.ndarray:
@@ -207,11 +207,20 @@ def _set_control(
     wrap_parameters_to_control(model.setup, model.mesh, model._input_data, model._parameters, wrap_options)
 
     # % Set control values
-    net = optimize_options.get("net", None)
+    net = optimize_options.get("net", None)  # net=None if not using 'ann' mapping
+    # Check consistency of control vector size
+    # (Could not fully standardize 'control_vector' before initializing model._parameters.control)
+    trainable_params_net = (
+        0 if net is None else sum([layer.n_params() for layer in net.layers if layer.trainable])
+    )
+    control_size = model._parameters.control.n + trainable_params_net
+    if control_vector.size != control_size:
+        raise ValueError(
+            f"Invalid shape for control_vector argument. Could not broadcast input array "
+            f"from shape {control_vector.shape} into shape {(control_size,)}"
+        )
 
-    if net is None:
-        # Could not fully standardize 'control_vector' before initializing model._parameters.control
-        # 'control_vector' can be checked by Numpy with setattr method applied to a Numpy array
+    if net is None:  # in case of not using 'ann' mapping
         setattr(model._parameters.control, "x", control_vector)
 
         wrap_control_to_parameters(
@@ -244,9 +253,7 @@ def _set_control(
         if net.layers[0].layer_name() == "Dense":
             desc = desc.reshape(-1, desc.shape[-1])
 
-        _set_parameters_from_net(
-            net, desc, optimize_options["parameters"], model._parameters, model.mesh.flwdir.shape
-        )
+        _set_parameters_from_net(net, desc, optimize_options["parameters"], model._parameters)
 
     # Manually dealloc the control
     model._parameters.control.dealloc()
@@ -268,6 +275,7 @@ def _get_lcurve_wjreg_best(
 
     max_distance = 0.0
     distance = np.zeros(shape=cost_arr.size)
+    wjreg = 0.0
 
     for i in range(cost_arr.size):
         lcurve_y = (jreg_arr[i] - jreg_min) / (jreg_max - jreg_min)

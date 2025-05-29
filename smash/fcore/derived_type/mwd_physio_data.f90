@@ -10,6 +10,7 @@
 !%          `Variables`              Description
 !%          ======================== =======================================
 !%          ``descriptor``           Descriptor maps field                       [(descriptor dependent)]
+!%          ``imperviousness``       Imperviousness map
 !%          ``l_descriptor``         Descriptor maps field min value             [(descriptor dependent)]
 !%          ``u_descriptor``         Descriptor maps field max value             [(descriptor dependent)]
 !%          ======================== =======================================
@@ -31,6 +32,7 @@ module mwd_physio_data
     type Physio_DataDT
 
         real(sp), dimension(:, :, :), allocatable :: descriptor
+        real(sp), dimension(:, :), allocatable :: imperviousness
         real(sp), dimension(:), allocatable :: l_descriptor
         real(sp), dimension(:), allocatable :: u_descriptor
 
@@ -48,6 +50,9 @@ contains
 
         allocate (this%descriptor(mesh%nrow, mesh%ncol, setup%nd))
         this%descriptor = -99._sp
+
+        allocate (this%imperviousness(mesh%nrow, mesh%ncol))
+        this%imperviousness = 0._sp
 
         allocate (this%l_descriptor(setup%nd))
         this%l_descriptor = -99._sp

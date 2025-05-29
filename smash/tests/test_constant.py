@@ -120,15 +120,18 @@ def test_module_parameters():
 
     # % Check hydrological module rr internal fluxes
     assert list(HYDROLOGICAL_MODULE_RR_INTERNAL_FLUXES.values()) == (
-        [["pn", "en", "pr", "perc", "lexc", "prr", "prd", "qr", "qd", "qt"]] * 3  # % gr4, gr4_mlp, gr4_ri
+        [["pn", "en", "pr", "perc", "ps", "es", "lexc", "prr", "prd", "qr", "qd", "qt"]]
+        * 3  # % gr4, gr4_mlp, gr4_ri
         + [["pn", "en", "lexc", "qt"]] * 2  # % gr4_ode, gr4_ode_mlp
-        + [["pn", "en", "pr", "perc", "lexc", "prr", "prd", "qr", "qd", "qt"]] * 3  # % gr5, gr5_mlp, gr5_ri
-        + [["pn", "en", "pr", "perc", "lexc", "prr", "prd", "pre", "qr", "qd", "qe", "qt"]]
+        + [["pn", "en", "pr", "perc", "ps", "es", "lexc", "prr", "prd", "qr", "qd", "qt"]]
+        * 3  # % gr5, gr5_mlp, gr5_ri
+        + [["pn", "en", "pr", "perc", "ps", "es", "lexc", "prr", "prd", "pre", "qr", "qd", "qe", "qt"]]
         * 2  # % gr6, gr6_mlp
-        + [["pn", "en", "pr", "perc", "lexc", "prr", "prd", "prl", "qr", "qd", "ql", "qt"]]
+        + [["pn", "en", "pr", "perc", "ps", "es", "lexc", "prr", "prd", "prl", "qr", "qd", "ql", "qt"]]
         * 2  # % grc, grc_mlp
-        + [["ei", "pn", "en", "pr", "perc", "prr", "qr", "qt"]] * 2  # % grd, grd_mlp
-        + [["ei", "pn", "en", "pr", "perc", "prr", "prd", "qr", "qd", "qt"]] * 2  # % loieau, loieau_mlp
+        + [["ei", "pn", "en", "pr", "perc", "ps", "es", "prr", "qr", "qt"]] * 2  # % grd, grd_mlp
+        + [["ei", "pn", "en", "pr", "perc", "ps", "es", "prr", "prd", "qr", "qd", "qt"]]
+        * 2  # % loieau, loieau_mlp
         + [["pn", "en", "qr", "qb", "qt"]]  # % vic3l
     )
 
@@ -252,7 +255,7 @@ def test_parameterization_neural_network_structure():
                     (4, 4),  # % gr4_mlp
                     (0, 0),  # % gr4_ri
                     (0, 0),  # % gr4_ode
-                    (4, 5),  # % gr4_ode_mlp
+                    (4, 4),  # % gr4_ode_mlp
                     (0, 0),  # % gr5
                     (4, 4),  # % gr5_mlp
                     (0, 0),  # % gr5_ri
@@ -401,7 +404,7 @@ def test_default_bounds_parameters():
         (1e-6, 1e3),  # % cp
         (1e-6, 1e3),  # % ct
         (1e-6, 5e-4),  # % alpha1
-        (1e-5, 1.0),  # % alpha2
+        (1e-5, 1e-3),  # % alpha2
         (1e-6, 1e3),  # % cl
         (1e-3, 20),  # % be
         (-50, 50),  # % kexc

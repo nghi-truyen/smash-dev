@@ -815,7 +815,7 @@ def _standardize_simulation_cost_options_gauge(
         st = pd.Timestamp(model.setup.start_time)
         et = pd.Timestamp(model.setup.end_time)
         start_slice = int((end_warmup - st).total_seconds() / model.setup.dt)
-        end_slice = model.setup.ntime_step - 1
+        end_slice = model.setup.ntime_step
         time_slice = slice(start_slice, end_slice)
         for i, ggc in enumerate(model.mesh.code):
             if ggc in gauge:
@@ -1143,7 +1143,11 @@ def _standardize_simulation_optimize_options_finalize(
 
     # % Check if decriptors are not found for regionalization mappings
     if model.setup.nd == 0 and mapping in REGIONAL_MAPPING:
-        raise ValueError(f"Physiographic descriptors are required for optimization with {mapping} mapping")
+        raise ValueError(
+            f"Physiographic descriptors are required for optimization with {mapping} mapping. "
+            f"Please check if read_descriptor, descriptor_name and descriptor_directory "
+            f"are properly defined in the model setup."
+        )
 
     descriptor_present = "descriptor" in optimize_options
 

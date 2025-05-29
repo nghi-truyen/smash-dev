@@ -47,10 +47,10 @@ if TYPE_CHECKING:
 
 
 __all__ = [
-    "Optimize",
     "BayesianOptimize",
-    "optimize",
+    "Optimize",
     "bayesian_optimize",
+    "optimize",
 ]
 
 
@@ -70,7 +70,7 @@ class Optimize:
         An array of shape *(nrow, ncol, n)* representing simulated discharges on the domain for each
         **time_step**.
 
-    internal_fluxes : `dict[str, numpy.ndarray]`
+    internal_fluxes : dict[str, `numpy.ndarray`]
         A dictionary where keys are the names of the internal fluxes and the values are array of
         shape *(nrow, ncol, n)* representing an internal flux on the domain for each **time_step**.
 
@@ -101,6 +101,9 @@ class Optimize:
 
         wjreg_opt : `float`
             The optimal wjreg value.
+
+        wjreg_approx: `float`
+            The approximative wjreg value evaluated with one optimization cycle only.
 
         distance : `numpy.ndarray`
             An array of shape *(6,)* representing the L-Curve distance for each optimization cycle
@@ -162,7 +165,7 @@ class BayesianOptimize:
         An array of shape *(nrow, ncol, n)* representing simulated discharges on the domain for each
         **time_step**.
 
-    internal_fluxes : `dict[str, numpy.ndarray]`
+    internal_fluxes : dict[str, `numpy.ndarray`]
         A dictionary where keys are the names of the internal fluxes and the values are array of
         shape *(nrow, ncol, n)* representing an internal flux on the domain for each **time_step**.
 
@@ -250,7 +253,7 @@ class _ScipyOptimizeCallback:
         # % intermediate_result is required by callback function in scipy
         if self.verbose:
             print(
-                f"{' '*4}At iterate {self.iteration:>5}    nfg = {self.nfg:>5}    "
+                f"{' ' * 4}At iterate {self.iteration:>5}    nfg = {self.nfg:>5}    "
                 f"J = {self.cost:>.5e}    |proj g| = {self.projg:>.5e}"
             )
 
@@ -277,17 +280,17 @@ class _ScipyOptimizeCallback:
     def terminate(self, final_result: scipy_OptimizeResult):
         if self.verbose:
             print(
-                f"{' '*4}At iterate {self.iteration:>5}    nfg = {self.nfg:>5}    "
+                f"{' ' * 4}At iterate {self.iteration:>5}    nfg = {self.nfg:>5}    "
                 f"J = {self.cost:>.5e}    |proj g| = {self.projg:>.5e}"
             )
-            print(f"{' '*4}{final_result.message}")
+            print(f"{' ' * 4}{final_result.message}")
 
 
 def _optimize_fast_wjreg(
     model: Model, options: OptionsDT, returns: ReturnsDT, optimize_options: dict, return_options: dict
 ) -> float:
     if options.comm.verbose:
-        print(f"{' '*4}FAST WJREG CYCLE 1")
+        print(f"{' ' * 4}FAST WJREG CYCLE 1")
 
     # % Activate returns flags
     for flag in ["cost", "jobs", "jreg"]:
@@ -320,7 +323,7 @@ def _optimize_lcurve_wjreg(
     model: Model, options: OptionsDT, returns: ReturnsDT, optimize_options: dict, return_options: dict
 ) -> tuple[float, dict]:
     if options.comm.verbose:
-        print(f"{' '*4}L-CURVE WJREG CYCLE 1")
+        print(f"{' ' * 4}L-CURVE WJREG CYCLE 1")
 
     # % Activate returns flags
     for flag in ["cost", "jobs", "jreg"]:
@@ -336,7 +339,6 @@ def _optimize_lcurve_wjreg(
         returns,
     )
     jobs_max = returns.jobs
-
     # % Avoid to make a complete copy of model
     wparameters = model._parameters.copy()
     _apply_optimizer(model, wparameters, options, returns, optimize_options, return_options, callback=None)
@@ -345,6 +347,7 @@ def _optimize_lcurve_wjreg(
     jobs_min = returns.jobs
     jreg_min = 0.0
     jreg_max = returns.jreg
+    wjreg_fast = 0.0
 
     if (jobs_min / jobs_max) < 0.95 and (jreg_max - jreg_min) > 0.0:
         wjreg_fast = (jobs_max - jobs_min) / jreg_max
@@ -366,7 +369,7 @@ def _optimize_lcurve_wjreg(
         options.cost.wjreg = wj
 
         if options.comm.verbose:
-            print(f"{' '*4}L-CURVE WJREG CYCLE {i + 2}")
+            print(f"{' ' * 4}L-CURVE WJREG CYCLE {i + 2}")
 
         wparameters = model._parameters.copy()
         _apply_optimizer(
@@ -381,6 +384,7 @@ def _optimize_lcurve_wjreg(
 
     lcurve = {
         "wjreg_opt": wjreg,
+        "wjreg_approx": wjreg_fast,
         "distance": distance,
         "cost": cost_arr,
         "jobs": jobs_arr,
@@ -467,13 +471,13 @@ def _optimize(
             model, wrap_options, wrap_returns, optimize_options, return_options
         )
         if wrap_options.comm.verbose:
-            print(f"{' '*4}FAST WJREG LAST CYCLE. wjreg: {'{:.5e}'.format(wrap_options.cost.wjreg)}")
+            print(f"{' ' * 4}FAST WJREG LAST CYCLE. wjreg: {'{:.5e}'.format(wrap_options.cost.wjreg)}")
     elif auto_wjreg == "lcurve":
         wrap_options.cost.wjreg, lcurve_wjreg = _optimize_lcurve_wjreg(
             model, wrap_options, wrap_returns, optimize_options, return_options
         )
         if wrap_options.comm.verbose:
-            print(f"{' '*4}L-CURVE WJREG LAST CYCLE. wjreg: {'{:.5e}'.format(wrap_options.cost.wjreg)}")
+            print(f"{' ' * 4}L-CURVE WJREG LAST CYCLE. wjreg: {'{:.5e}'.format(wrap_options.cost.wjreg)}")
     else:
         pass
 
@@ -688,7 +692,7 @@ def _adaptive_optimize(
 
     if wrap_options.comm.verbose:
         print(
-            f"{' '*4}At iterate {0:>5}    nfg = {1:>5}    "
+            f"{' ' * 4}At iterate {0:>5}    nfg = {1:>5}    "
             f"J = {model._output.cost:>.5e}    |proj g| = {projg:>.5e}"
         )
 
@@ -722,8 +726,7 @@ def _adaptive_optimize(
                 # iterations
                 if wrap_options.comm.verbose:
                     print(
-                        f"{' '*4}EARLY STOPPING: NO IMPROVEMENT for {early_stopping} CONSECUTIVE "
-                        f"ITERATIONS"
+                        f"{' ' * 4}EARLY STOPPING: NO IMPROVEMENT for {early_stopping} CONSECUTIVE ITERATIONS"
                     )
                 break
 
@@ -736,18 +739,18 @@ def _adaptive_optimize(
 
         if wrap_options.comm.verbose:
             print(
-                f"{' '*4}At iterate {ite:>5}    nfg = {ite+1:>5}    "
+                f"{' ' * 4}At iterate {ite:>5}    nfg = {ite + 1:>5}    "
                 f"J = {model._output.cost:>.5e}    |proj g| = {projg:>.5e}"
             )
 
             if ite == maxiter:
-                print(f"{' '*4}STOP: TOTAL NO. of ITERATIONS REACHED LIMIT")
+                print(f"{' ' * 4}STOP: TOTAL NO. of ITERATIONS REACHED LIMIT")
 
     if early_stopping:
         if opt_info["ite"] < maxiter:
             if wrap_options.comm.verbose:
                 print(
-                    f"{' '*4}Revert to iteration {opt_info['ite']} with "
+                    f"{' ' * 4}Revert to iteration {opt_info['ite']} with "
                     f"J = {opt_info['cost']:.5e} due to early stopping"
                 )
 
@@ -993,7 +996,7 @@ def _sbs_optimize(
     message = "STOP: TOTAL NO. of ITERATIONS REACHED LIMIT"
 
     if wrap_options.comm.verbose:
-        print(f"{' '*4}At iterate {0:>5}    nfg = {nfg:>5}    J = {gx:>.5e}    ddx = {ddx:>4.2f}")
+        print(f"{' ' * 4}At iterate {0:>5}    nfg = {nfg:>5}    J = {gx:>.5e}    ddx = {ddx:>4.2f}")
 
     for iter in range(1, wrap_options.optimize.maxiter * n + 1):
         dxn = min(dxn, ddx)
@@ -1094,7 +1097,7 @@ def _sbs_optimize(
 
             if wrap_options.comm.verbose:
                 print(
-                    f"{' '*4}At iterate {iteration:>5}    nfg = {nfg:>5}    J = {gx:>.5e}    "
+                    f"{' ' * 4}At iterate {iteration:>5}    nfg = {nfg:>5}    J = {gx:>.5e}    "
                     f"ddx = {ddx:>4.2f}"
                 )
 
@@ -1127,7 +1130,7 @@ def _sbs_optimize(
         ret["serr_sigma"] = model.get_serr_sigma().copy()
 
     if wrap_options.comm.verbose:
-        print(f"{' '*4}{message}")
+        print(f"{' ' * 4}{message}")
 
     return ret
 

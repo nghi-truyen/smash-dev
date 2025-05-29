@@ -5,6 +5,7 @@ ninja
 numpy
 f90wrap
 versioneer[toml]
+geopandas
 rasterio
 pandas
 h5py
@@ -21,7 +22,6 @@ ipython
 pickleshare
 sphinxcontrib-bibtex
 sphinx-design
-sphinx-autosummary-accessors
 matplotlib
 
 # test

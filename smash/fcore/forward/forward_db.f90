@@ -2205,9 +2205,9 @@ END MODULE MWD_OUTPUT_DIFF
 !%          ``x``                      Control vector
 !%          ``l``                      Control vector lower bound
 !%          ``u``                      Control vector upper bound
-!%          ``x_bkg``                  Control vector background
-!%          ``l_bkg``                  Control vector lower bound background
-!%          ``u_bkg``                  Control vector upper bound background
+!%          ``x_raw``                  Control vector raw
+!%          ``l_raw``                  Control vector lower bound raw
+!%          ``u_raw``                  Control vector upper bound raw
 !%          ``nbd``                    Control vector kind of bound
 !%
 !§      Subroutine
@@ -2227,9 +2227,9 @@ MODULE MWD_CONTROL_DIFF
       REAL(sp), DIMENSION(:), ALLOCATABLE :: x
       REAL(sp), DIMENSION(:), ALLOCATABLE :: l
       REAL(sp), DIMENSION(:), ALLOCATABLE :: u
-      REAL(sp), DIMENSION(:), ALLOCATABLE :: x_bkg
-      REAL(sp), DIMENSION(:), ALLOCATABLE :: l_bkg
-      REAL(sp), DIMENSION(:), ALLOCATABLE :: u_bkg
+      REAL(sp), DIMENSION(:), ALLOCATABLE :: x_raw
+      REAL(sp), DIMENSION(:), ALLOCATABLE :: l_raw
+      REAL(sp), DIMENSION(:), ALLOCATABLE :: u_raw
       INTEGER, DIMENSION(:), ALLOCATABLE :: nbd
       CHARACTER(len=lchar), DIMENSION(:), ALLOCATABLE :: name
   END TYPE CONTROLDT
@@ -2237,8 +2237,8 @@ MODULE MWD_CONTROL_DIFF
       REAL(sp), DIMENSION(:), ALLOCATABLE :: x
       REAL(sp), DIMENSION(:), ALLOCATABLE :: l
       REAL(sp), DIMENSION(:), ALLOCATABLE :: u
-      REAL(sp), DIMENSION(:), ALLOCATABLE :: l_bkg
-      REAL(sp), DIMENSION(:), ALLOCATABLE :: u_bkg
+      REAL(sp), DIMENSION(:), ALLOCATABLE :: l_raw
+      REAL(sp), DIMENSION(:), ALLOCATABLE :: u_raw
       INTEGER, DIMENSION(:), ALLOCATABLE :: nbd
   END TYPE CONTROLDT_DIFF
 
@@ -2258,12 +2258,12 @@ CONTAINS
     this%l = -99._sp
     ALLOCATE(this%u(this%n))
     this%u = -99._sp
-    ALLOCATE(this%x_bkg(this%n))
-    this%x_bkg = 0._sp
-    ALLOCATE(this%l_bkg(this%n))
-    this%l_bkg = -99._sp
-    ALLOCATE(this%u_bkg(this%n))
-    this%u_bkg = -99._sp
+    ALLOCATE(this%x_raw(this%n))
+    this%x_raw = 0._sp
+    ALLOCATE(this%l_raw(this%n))
+    this%l_raw = -99._sp
+    ALLOCATE(this%u_raw(this%n))
+    this%u_raw = -99._sp
     ALLOCATE(this%nbd(this%n))
     this%nbd = -99
     ALLOCATE(this%name(this%n))
@@ -2278,9 +2278,9 @@ CONTAINS
       DEALLOCATE(this%x)
       DEALLOCATE(this%l)
       DEALLOCATE(this%u)
-      DEALLOCATE(this%x_bkg)
-      DEALLOCATE(this%l_bkg)
-      DEALLOCATE(this%u_bkg)
+      DEALLOCATE(this%x_raw)
+      DEALLOCATE(this%l_raw)
+      DEALLOCATE(this%u_raw)
       DEALLOCATE(this%nbd)
       DEALLOCATE(this%name)
     END IF
@@ -5779,8 +5779,8 @@ CONTAINS
 !  Differentiation of sbs_control_tfm in forward (tangent) mode (with options fixinterface noISIZE context):
 !   variations   of useful results: *(parameters.control.x)
 !   with respect to varying inputs: *(parameters.control.x)
-!   Plus diff mem management of: parameters.control.x:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in
+!   Plus diff mem management of: parameters.control.x:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in
   SUBROUTINE SBS_CONTROL_TFM_D(parameters, parameters_d)
     IMPLICIT NONE
     TYPE(PARAMETERSDT), INTENT(INOUT) :: parameters
@@ -5796,12 +5796,12 @@ CONTAINS
 ! Only apply sbs transformation on RR parameters and RR initial states
     DO i=1,SUM(parameters%control%nbk(1:2))
       IF (nbd_mask(i)) THEN
-        IF (parameters%control%l_bkg(i) .LT. 0._sp) THEN
+        IF (parameters%control%l_raw(i) .LT. 0._sp) THEN
           parameters_d%control%x(i) = parameters_d%control%x(i)/SQRT(1.0&
 &           +parameters%control%x(i)**2)
           parameters%control%x(i) = ASINH(parameters%control%x(i))
-        ELSE IF (parameters%control%l_bkg(i) .GE. 0._sp .AND. parameters&
-&           %control%u_bkg(i) .LE. 1._sp) THEN
+        ELSE IF (parameters%control%l_raw(i) .GE. 0._sp .AND. parameters&
+&           %control%u_raw(i) .LE. 1._sp) THEN
           temp = parameters%control%x(i)/(-parameters%control%x(i)+1._sp&
 &           )
           parameters_d%control%x(i) = (temp+1.0)*parameters_d%control%x(&
@@ -5819,8 +5819,8 @@ CONTAINS
 !  Differentiation of sbs_control_tfm in reverse (adjoint) mode (with options fixinterface noISIZE context):
 !   gradient     of useful results: *(parameters.control.x)
 !   with respect to varying inputs: *(parameters.control.x)
-!   Plus diff mem management of: parameters.control.x:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in
+!   Plus diff mem management of: parameters.control.x:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in
   SUBROUTINE SBS_CONTROL_TFM_B(parameters, parameters_b)
     IMPLICIT NONE
     TYPE(PARAMETERSDT), INTENT(INOUT) :: parameters
@@ -5840,12 +5840,12 @@ CONTAINS
     DO i=1,SUM(parameters%control%nbk(1:2))
       IF (.NOT.nbd_mask(i)) THEN
         CALL PUSHCONTROL2B(0)
-      ELSE IF (parameters%control%l_bkg(i) .LT. 0._sp) THEN
+      ELSE IF (parameters%control%l_raw(i) .LT. 0._sp) THEN
         CALL PUSHREAL4(parameters%control%x(i))
         parameters%control%x(i) = ASINH(parameters%control%x(i))
         CALL PUSHCONTROL2B(3)
-      ELSE IF (parameters%control%l_bkg(i) .GE. 0._sp .AND. parameters%&
-&         control%u_bkg(i) .LE. 1._sp) THEN
+      ELSE IF (parameters%control%l_raw(i) .GE. 0._sp .AND. parameters%&
+&         control%u_raw(i) .LE. 1._sp) THEN
         CALL PUSHREAL4(parameters%control%x(i))
         parameters%control%x(i) = LOG(parameters%control%x(i)/(1._sp-&
 &         parameters%control%x(i)))
@@ -5892,22 +5892,22 @@ CONTAINS
 ! Only apply sbs transformation on RR parameters and RR initial states
     DO i=1,SUM(parameters%control%nbk(1:2))
       IF (nbd_mask(i)) THEN
-        IF (parameters%control%l_bkg(i) .LT. 0._sp) THEN
+        IF (parameters%control%l_raw(i) .LT. 0._sp) THEN
           parameters%control%x(i) = ASINH(parameters%control%x(i))
-          parameters%control%l(i) = ASINH(parameters%control%l_bkg(i))
-          parameters%control%u(i) = ASINH(parameters%control%u_bkg(i))
-        ELSE IF (parameters%control%l_bkg(i) .GE. 0._sp .AND. parameters&
-&           %control%u_bkg(i) .LE. 1._sp) THEN
+          parameters%control%l(i) = ASINH(parameters%control%l_raw(i))
+          parameters%control%u(i) = ASINH(parameters%control%u_raw(i))
+        ELSE IF (parameters%control%l_raw(i) .GE. 0._sp .AND. parameters&
+&           %control%u_raw(i) .LE. 1._sp) THEN
           parameters%control%x(i) = LOG(parameters%control%x(i)/(1._sp-&
 &           parameters%control%x(i)))
-          parameters%control%l(i) = LOG(parameters%control%l_bkg(i)/(&
-&           1._sp-parameters%control%l_bkg(i)))
-          parameters%control%u(i) = LOG(parameters%control%u_bkg(i)/(&
-&           1._sp-parameters%control%u_bkg(i)))
+          parameters%control%l(i) = LOG(parameters%control%l_raw(i)/(&
+&           1._sp-parameters%control%l_raw(i)))
+          parameters%control%u(i) = LOG(parameters%control%u_raw(i)/(&
+&           1._sp-parameters%control%u_raw(i)))
         ELSE
           parameters%control%x(i) = LOG(parameters%control%x(i))
-          parameters%control%l(i) = LOG(parameters%control%l_bkg(i))
-          parameters%control%u(i) = LOG(parameters%control%u_bkg(i))
+          parameters%control%l(i) = LOG(parameters%control%l_raw(i))
+          parameters%control%u(i) = LOG(parameters%control%u_raw(i))
         END IF
       END IF
     END DO
@@ -5916,8 +5916,8 @@ CONTAINS
 !  Differentiation of sbs_inv_control_tfm in forward (tangent) mode (with options fixinterface noISIZE context):
 !   variations   of useful results: *(parameters.control.x)
 !   with respect to varying inputs: *(parameters.control.x)
-!   Plus diff mem management of: parameters.control.x:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in
+!   Plus diff mem management of: parameters.control.x:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in
   SUBROUTINE SBS_INV_CONTROL_TFM_D(parameters, parameters_d)
     IMPLICIT NONE
     TYPE(PARAMETERSDT), INTENT(INOUT) :: parameters
@@ -5934,12 +5934,12 @@ CONTAINS
 ! Only apply sbs inv transformation on RR parameters et RR initial states
     DO i=1,SUM(parameters%control%nbk(1:2))
       IF (nbd_mask(i)) THEN
-        IF (parameters%control%l_bkg(i) .LT. 0._sp) THEN
+        IF (parameters%control%l_raw(i) .LT. 0._sp) THEN
           parameters_d%control%x(i) = COSH(parameters%control%x(i))*&
 &           parameters_d%control%x(i)
           parameters%control%x(i) = SINH(parameters%control%x(i))
-        ELSE IF (parameters%control%l_bkg(i) .GE. 0._sp .AND. parameters&
-&           %control%u_bkg(i) .LE. 1._sp) THEN
+        ELSE IF (parameters%control%l_raw(i) .GE. 0._sp .AND. parameters&
+&           %control%u_raw(i) .LE. 1._sp) THEN
           temp = EXP(parameters%control%x(i)) + 1._sp
           temp0 = EXP(parameters%control%x(i))/temp
           parameters_d%control%x(i) = (EXP(parameters%control%x(i))-&
@@ -5958,8 +5958,8 @@ CONTAINS
 !  Differentiation of sbs_inv_control_tfm in reverse (adjoint) mode (with options fixinterface noISIZE context):
 !   gradient     of useful results: *(parameters.control.x)
 !   with respect to varying inputs: *(parameters.control.x)
-!   Plus diff mem management of: parameters.control.x:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in
+!   Plus diff mem management of: parameters.control.x:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in
   SUBROUTINE SBS_INV_CONTROL_TFM_B(parameters, parameters_b)
     IMPLICIT NONE
     TYPE(PARAMETERSDT), INTENT(INOUT) :: parameters
@@ -5978,12 +5978,12 @@ CONTAINS
     DO i=1,SUM(parameters%control%nbk(1:2))
       IF (.NOT.nbd_mask(i)) THEN
         CALL PUSHCONTROL2B(0)
-      ELSE IF (parameters%control%l_bkg(i) .LT. 0._sp) THEN
+      ELSE IF (parameters%control%l_raw(i) .LT. 0._sp) THEN
         CALL PUSHREAL4(parameters%control%x(i))
         parameters%control%x(i) = SINH(parameters%control%x(i))
         CALL PUSHCONTROL2B(3)
-      ELSE IF (parameters%control%l_bkg(i) .GE. 0._sp .AND. parameters%&
-&         control%u_bkg(i) .LE. 1._sp) THEN
+      ELSE IF (parameters%control%l_raw(i) .GE. 0._sp .AND. parameters%&
+&         control%u_raw(i) .LE. 1._sp) THEN
         CALL PUSHREAL4(parameters%control%x(i))
         parameters%control%x(i) = EXP(parameters%control%x(i))/(1._sp+&
 &         EXP(parameters%control%x(i)))
@@ -6031,10 +6031,10 @@ CONTAINS
 ! Only apply sbs inv transformation on RR parameters et RR initial states
     DO i=1,SUM(parameters%control%nbk(1:2))
       IF (nbd_mask(i)) THEN
-        IF (parameters%control%l_bkg(i) .LT. 0._sp) THEN
+        IF (parameters%control%l_raw(i) .LT. 0._sp) THEN
           parameters%control%x(i) = SINH(parameters%control%x(i))
-        ELSE IF (parameters%control%l_bkg(i) .GE. 0._sp .AND. parameters&
-&           %control%u_bkg(i) .LE. 1._sp) THEN
+        ELSE IF (parameters%control%l_raw(i) .GE. 0._sp .AND. parameters&
+&           %control%u_raw(i) .LE. 1._sp) THEN
           parameters%control%x(i) = EXP(parameters%control%x(i))/(1._sp+&
 &           EXP(parameters%control%x(i)))
         ELSE
@@ -6042,8 +6042,8 @@ CONTAINS
         END IF
       END IF
     END DO
-    parameters%control%l = parameters%control%l_bkg
-    parameters%control%u = parameters%control%u_bkg
+    parameters%control%l = parameters%control%l_raw
+    parameters%control%u = parameters%control%u_raw
   END SUBROUTINE SBS_INV_CONTROL_TFM
 
 !  Differentiation of normalize_control_tfm in forward (tangent) mode (with options fixinterface noISIZE context):
@@ -6059,9 +6059,9 @@ CONTAINS
     nbd_mask = parameters%control%nbd(:) .EQ. 2
     WHERE (nbd_mask) 
       parameters_d%control%x = parameters_d%control%x/(parameters%&
-&       control%u_bkg-parameters%control%l_bkg)
+&       control%u_raw-parameters%control%l_raw)
       parameters%control%x = (parameters%control%x-parameters%control%&
-&       l_bkg)/(parameters%control%u_bkg-parameters%control%l_bkg)
+&       l_raw)/(parameters%control%u_raw-parameters%control%l_raw)
     END WHERE
   END SUBROUTINE NORMALIZE_CONTROL_TFM_D
 
@@ -6077,7 +6077,7 @@ CONTAINS
 !% Need lower and upper bound to normalize
     nbd_mask = parameters%control%nbd(:) .EQ. 2
     WHERE (nbd_mask) parameters_b%control%x = parameters_b%control%x/(&
-&       parameters%control%u_bkg-parameters%control%l_bkg)
+&       parameters%control%u_raw-parameters%control%l_raw)
   END SUBROUTINE NORMALIZE_CONTROL_TFM_B
 
   SUBROUTINE NORMALIZE_CONTROL_TFM(parameters)
@@ -6088,7 +6088,7 @@ CONTAINS
     nbd_mask = parameters%control%nbd(:) .EQ. 2
     WHERE (nbd_mask) 
       parameters%control%x = (parameters%control%x-parameters%control%&
-&       l_bkg)/(parameters%control%u_bkg-parameters%control%l_bkg)
+&       l_raw)/(parameters%control%u_raw-parameters%control%l_raw)
       parameters%control%l = 0._sp
       parameters%control%u = 1._sp
     END WHERE
@@ -6097,8 +6097,8 @@ CONTAINS
 !  Differentiation of normalize_inv_control_tfm in forward (tangent) mode (with options fixinterface noISIZE context):
 !   variations   of useful results: *(parameters.control.x)
 !   with respect to varying inputs: *(parameters.control.x)
-!   Plus diff mem management of: parameters.control.x:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in
+!   Plus diff mem management of: parameters.control.x:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in
   SUBROUTINE NORMALIZE_INV_CONTROL_TFM_D(parameters, parameters_d)
     IMPLICIT NONE
     TYPE(PARAMETERSDT), INTENT(INOUT) :: parameters
@@ -6107,18 +6107,18 @@ CONTAINS
 !% Need lower and upper bound to denormalize
     nbd_mask = parameters%control%nbd(:) .EQ. 2
     WHERE (nbd_mask) 
-      parameters_d%control%x = (parameters%control%u_bkg-parameters%&
-&       control%l_bkg)*parameters_d%control%x
+      parameters_d%control%x = (parameters%control%u_raw-parameters%&
+&       control%l_raw)*parameters_d%control%x
       parameters%control%x = parameters%control%x*(parameters%control%&
-&       u_bkg-parameters%control%l_bkg) + parameters%control%l_bkg
+&       u_raw-parameters%control%l_raw) + parameters%control%l_raw
     END WHERE
   END SUBROUTINE NORMALIZE_INV_CONTROL_TFM_D
 
 !  Differentiation of normalize_inv_control_tfm in reverse (adjoint) mode (with options fixinterface noISIZE context):
 !   gradient     of useful results: *(parameters.control.x)
 !   with respect to varying inputs: *(parameters.control.x)
-!   Plus diff mem management of: parameters.control.x:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in
+!   Plus diff mem management of: parameters.control.x:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in
   SUBROUTINE NORMALIZE_INV_CONTROL_TFM_B(parameters, parameters_b)
     IMPLICIT NONE
     TYPE(PARAMETERSDT), INTENT(INOUT) :: parameters
@@ -6126,8 +6126,8 @@ CONTAINS
     LOGICAL, DIMENSION(parameters%control%n) :: nbd_mask
 !% Need lower and upper bound to denormalize
     nbd_mask = parameters%control%nbd(:) .EQ. 2
-    WHERE (nbd_mask) parameters_b%control%x = (parameters%control%u_bkg-&
-&       parameters%control%l_bkg)*parameters_b%control%x
+    WHERE (nbd_mask) parameters_b%control%x = (parameters%control%u_raw-&
+&       parameters%control%l_raw)*parameters_b%control%x
   END SUBROUTINE NORMALIZE_INV_CONTROL_TFM_B
 
   SUBROUTINE NORMALIZE_INV_CONTROL_TFM(parameters)
@@ -6138,9 +6138,9 @@ CONTAINS
     nbd_mask = parameters%control%nbd(:) .EQ. 2
     WHERE (nbd_mask) 
       parameters%control%x = parameters%control%x*(parameters%control%&
-&       u_bkg-parameters%control%l_bkg) + parameters%control%l_bkg
-      parameters%control%l = parameters%control%l_bkg
-      parameters%control%u = parameters%control%u_bkg
+&       u_raw-parameters%control%l_raw) + parameters%control%l_raw
+      parameters%control%l = parameters%control%l_raw
+      parameters%control%u = parameters%control%u_raw
     END WHERE
   END SUBROUTINE NORMALIZE_INV_CONTROL_TFM
 
@@ -6148,8 +6148,8 @@ CONTAINS
 !   variations   of useful results: *(parameters.control.x)
 !   with respect to varying inputs: *(parameters.control.x)
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in
   SUBROUTINE CONTROL_TFM_D(parameters, parameters_d, options)
     IMPLICIT NONE
     TYPE(PARAMETERSDT), INTENT(INOUT) :: parameters
@@ -6167,8 +6167,8 @@ CONTAINS
 !   gradient     of useful results: *(parameters.control.x)
 !   with respect to varying inputs: *(parameters.control.x)
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in
   SUBROUTINE CONTROL_TFM_B(parameters, parameters_b, options)
     IMPLICIT NONE
     TYPE(PARAMETERSDT), INTENT(INOUT) :: parameters
@@ -6208,8 +6208,8 @@ CONTAINS
 !   variations   of useful results: *(parameters.control.x)
 !   with respect to varying inputs: *(parameters.control.x)
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in
   SUBROUTINE INV_CONTROL_TFM_D(parameters, parameters_d, options)
     IMPLICIT NONE
     TYPE(PARAMETERSDT), INTENT(INOUT) :: parameters
@@ -6227,8 +6227,8 @@ CONTAINS
 !   gradient     of useful results: *(parameters.control.x)
 !   with respect to varying inputs: *(parameters.control.x)
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in
   SUBROUTINE INV_CONTROL_TFM_B(parameters, parameters_b, options)
     IMPLICIT NONE
     TYPE(PARAMETERSDT), INTENT(INOUT) :: parameters
@@ -6902,10 +6902,10 @@ CONTAINS
     CALL SERR_SIGMA_PARAMETERS_FILL_CONTROL(setup, mesh, parameters, &
 &                                     options)
     CALL NN_PARAMETERS_FILL_CONTROL(setup, options, parameters)
-! Store background
-    parameters%control%x_bkg = parameters%control%x
-    parameters%control%l_bkg = parameters%control%l
-    parameters%control%u_bkg = parameters%control%u
+! Store raw control values
+    parameters%control%x_raw = parameters%control%x
+    parameters%control%l_raw = parameters%control%l
+    parameters%control%u_raw = parameters%control%u
   END SUBROUTINE FILL_CONTROL
 
 !  Differentiation of uniform_rr_parameters_fill_parameters in forward (tangent) mode (with options fixinterface noISIZE context)
@@ -8874,8 +8874,8 @@ CONTAINS
 !   with respect to varying inputs: *(parameters.control.x) *(parameters.rr_parameters.values)
 !                *(parameters.rr_initial_states.values)
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in parameters.rr_parameters.values:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in parameters.rr_parameters.values:in
 !                parameters.rr_initial_states.values:in parameters.serr_mu_parameters.values:in
 !                parameters.serr_sigma_parameters.values:in parameters.nn_parameters.weight_1:in
 !                parameters.nn_parameters.bias_1:in parameters.nn_parameters.weight_2:in
@@ -8917,8 +8917,8 @@ CONTAINS
 !   with respect to varying inputs: *(parameters.control.x) *(parameters.rr_parameters.values)
 !                *(parameters.rr_initial_states.values)
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in parameters.rr_parameters.values:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in parameters.rr_parameters.values:in
 !                parameters.rr_initial_states.values:in parameters.serr_mu_parameters.values:in
 !                parameters.serr_sigma_parameters.values:in parameters.nn_parameters.weight_1:in
 !                parameters.nn_parameters.bias_1:in parameters.nn_parameters.weight_2:in
@@ -9054,7 +9054,7 @@ CONTAINS
     INTRINSIC SUM
 ! Tapenade needs to know the size somehow
     dbkg_d = parameters_d%control%x
-    dbkg = parameters%control%x - parameters%control%x_bkg
+    dbkg = parameters%control%x - parameters%control%x_raw
     res_d = SUM(2*dbkg*dbkg_d)
     res = SUM(dbkg*dbkg)
   END FUNCTION PRIOR_REGULARIZATION_D
@@ -9073,8 +9073,8 @@ CONTAINS
     REAL(sp), DIMENSION(parameters%control%n) :: dbkg_b
     INTRINSIC SUM
 ! Tapenade needs to know the size somehow
-    dbkg = parameters%control%x - parameters%control%x_bkg
-    dbkg = parameters%control%x - parameters%control%x_bkg
+    dbkg = parameters%control%x - parameters%control%x_raw
+    dbkg = parameters%control%x - parameters%control%x_raw
     dbkg_b = 0.0_4
     dbkg_b = 2*dbkg*res_b
     parameters_b%control%x = parameters_b%control%x + dbkg_b
@@ -9087,7 +9087,7 @@ CONTAINS
     REAL(sp), DIMENSION(parameters%control%n) :: dbkg
     INTRINSIC SUM
 ! Tapenade needs to know the size somehow
-    dbkg = parameters%control%x - parameters%control%x_bkg
+    dbkg = parameters%control%x - parameters%control%x_raw
     res = SUM(dbkg*dbkg)
   END FUNCTION PRIOR_REGULARIZATION
 
@@ -9310,8 +9310,8 @@ CONTAINS
 !   with respect to varying inputs: *(parameters.control.x) *(parameters.rr_parameters.values)
 !                *(parameters.rr_initial_states.values)
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in parameters.rr_parameters.values:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in parameters.rr_parameters.values:in
 !                parameters.rr_initial_states.values:in parameters.serr_mu_parameters.values:in
 !                parameters.serr_sigma_parameters.values:in parameters.nn_parameters.weight_1:in
 !                parameters.nn_parameters.bias_1:in parameters.nn_parameters.weight_2:in
@@ -9341,7 +9341,7 @@ CONTAINS
     parameters_bkg_d = parameters_d
     parameters_bkg = parameters
     parameters_bkg_d%control%x = 0.0_4
-    parameters_bkg%control%x = parameters%control%x_bkg
+    parameters_bkg%control%x = parameters%control%x_raw
     CALL CONTROL_TFM_D(parameters_bkg, parameters_bkg_d, options)
     CALL CONTROL_TO_PARAMETERS_D(setup, mesh, input_data, parameters_bkg&
 &                          , parameters_bkg_d, options)
@@ -9390,8 +9390,8 @@ CONTAINS
 !   with respect to varying inputs: *(parameters.control.x) *(parameters.rr_parameters.values)
 !                *(parameters.rr_initial_states.values)
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in parameters.rr_parameters.values:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in parameters.rr_parameters.values:in
 !                parameters.rr_initial_states.values:in parameters.serr_mu_parameters.values:in
 !                parameters.serr_sigma_parameters.values:in parameters.nn_parameters.weight_1:in
 !                parameters.nn_parameters.bias_1:in parameters.nn_parameters.weight_2:in
@@ -9426,7 +9426,7 @@ CONTAINS
     parameters_bkg = parameters
     CALL PUSHREAL4ARRAY(parameters_bkg%control%x, SIZE(parameters_bkg%&
 &                 control%x, 1))
-    parameters_bkg%control%x = parameters%control%x_bkg
+    parameters_bkg%control%x = parameters%control%x_raw
     CALL PUSHREAL4ARRAY(parameters_bkg%control%x, SIZE(parameters_bkg%&
 &                 control%x, 1))
     CALL CONTROL_TFM(parameters_bkg, options)
@@ -9600,9 +9600,9 @@ CONTAINS
     res = 0._sp
 ! This allows to retrieve a parameters structure with background values
     parameters_bkg = parameters
-    parameters_bkg%control%x = parameters%control%x_bkg
-    parameters_bkg%control%l = parameters%control%l_bkg
-    parameters_bkg%control%u = parameters%control%u_bkg
+    parameters_bkg%control%x = parameters%control%x_raw
+    parameters_bkg%control%l = parameters%control%l_raw
+    parameters_bkg%control%u = parameters%control%u_raw
     CALL CONTROL_TFM(parameters_bkg, options)
     CALL CONTROL_TO_PARAMETERS(setup, mesh, input_data, parameters_bkg, &
 &                        options)
@@ -11569,8 +11569,8 @@ CONTAINS
 !   with respect to varying inputs: *(parameters.control.x) *(parameters.rr_parameters.values)
 !                *(parameters.rr_initial_states.values)
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in parameters.rr_parameters.values:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in parameters.rr_parameters.values:in
 !                parameters.rr_initial_states.values:in parameters.serr_mu_parameters.values:in
 !                parameters.serr_sigma_parameters.values:in parameters.nn_parameters.weight_1:in
 !                parameters.nn_parameters.bias_1:in parameters.nn_parameters.weight_2:in
@@ -11627,8 +11627,8 @@ CONTAINS
 !   with respect to varying inputs: *(parameters.control.x) *(parameters.rr_parameters.values)
 !                *(parameters.rr_initial_states.values)
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in parameters.rr_parameters.values:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in parameters.rr_parameters.values:in
 !                parameters.rr_initial_states.values:in parameters.serr_mu_parameters.values:in
 !                parameters.serr_sigma_parameters.values:in parameters.nn_parameters.weight_1:in
 !                parameters.nn_parameters.bias_1:in parameters.nn_parameters.weight_2:in
@@ -11849,8 +11849,8 @@ CONTAINS
 !   with respect to varying inputs: *(parameters.control.x) *(parameters.rr_parameters.values)
 !                *(parameters.rr_initial_states.values) *(output.response.q)
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in parameters.rr_parameters.values:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in parameters.rr_parameters.values:in
 !                parameters.rr_initial_states.values:in parameters.serr_mu_parameters.values:in
 !                parameters.serr_sigma_parameters.values:in parameters.nn_parameters.weight_1:in
 !                parameters.nn_parameters.bias_1:in parameters.nn_parameters.weight_2:in
@@ -11886,8 +11886,8 @@ CONTAINS
 !   with respect to varying inputs: *(parameters.control.x) *(parameters.rr_parameters.values)
 !                *(parameters.rr_initial_states.values) *(output.response.q)
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in parameters.rr_parameters.values:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in parameters.rr_parameters.values:in
 !                parameters.rr_initial_states.values:in parameters.serr_mu_parameters.values:in
 !                parameters.serr_sigma_parameters.values:in parameters.nn_parameters.weight_1:in
 !                parameters.nn_parameters.bias_1:in parameters.nn_parameters.weight_2:in
@@ -11998,8 +11998,8 @@ CONTAINS
 !                *(parameters.rr_initial_states.values) *(parameters.serr_mu_parameters.values)
 !                *(parameters.serr_sigma_parameters.values) *(output.response.q)
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in parameters.rr_parameters.values:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in parameters.rr_parameters.values:in
 !                parameters.rr_initial_states.values:in parameters.serr_mu_parameters.values:in
 !                parameters.serr_sigma_parameters.values:in parameters.nn_parameters.weight_1:in
 !                parameters.nn_parameters.bias_1:in parameters.nn_parameters.weight_2:in
@@ -12036,8 +12036,8 @@ CONTAINS
 !                *(parameters.rr_initial_states.values) *(parameters.serr_mu_parameters.values)
 !                *(parameters.serr_sigma_parameters.values) *(output.response.q)
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in parameters.rr_parameters.values:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in parameters.rr_parameters.values:in
 !                parameters.rr_initial_states.values:in parameters.serr_mu_parameters.values:in
 !                parameters.serr_sigma_parameters.values:in parameters.nn_parameters.weight_1:in
 !                parameters.nn_parameters.bias_1:in parameters.nn_parameters.weight_2:in
@@ -12854,6 +12854,7 @@ END MODULE MD_ALGEBRA_DIFF
 !%      ----------
 !%
 !%      - forward_mlp
+!%      - forward_and_backward_mlp
 MODULE MD_NEURAL_NETWORK_DIFF
 !% only : sp
   USE MD_CONSTANT
@@ -12892,54 +12893,45 @@ CONTAINS
     REAL(sp), DIMENSION(SIZE(bias_1)) :: inter_layer_1_d
     REAL(sp), DIMENSION(SIZE(bias_2)) :: inter_layer_2
     REAL(sp), DIMENSION(SIZE(bias_2)) :: inter_layer_2_d
-    INTEGER :: i
-    INTRINSIC MAX
+    INTRINSIC EXP
     INTRINSIC TANH
+    REAL(sp), DIMENSION(SIZE(bias_1)) :: temp
+    REAL(sp), DIMENSION(SIZE(bias_2)) :: temp0
     CALL DOT_PRODUCT_2D_1D_D(weight_1, weight_1_d, input_layer, &
 &                      input_layer_d, inter_layer_1, inter_layer_1_d)
-    DO i=1,SIZE(inter_layer_1)
-      inter_layer_1_d(i) = inter_layer_1_d(i) + bias_1_d(i)
-      inter_layer_1(i) = inter_layer_1(i) + bias_1(i)
-      IF (0.01_sp*inter_layer_1(i) .LT. inter_layer_1(i)) THEN
-        inter_layer_1(i) = inter_layer_1(i)
-      ELSE
-        inter_layer_1_d(i) = 0.01_sp*inter_layer_1_d(i)
-        inter_layer_1(i) = 0.01_sp*inter_layer_1(i)
-      END IF
-    END DO
+    inter_layer_1_d = inter_layer_1_d + bias_1_d
+    inter_layer_1 = inter_layer_1 + bias_1
+! SiLU
+    temp = EXP(-inter_layer_1) + 1._sp
+    inter_layer_1_d = (inter_layer_1*EXP(-inter_layer_1)/temp+1.0)*&
+&     inter_layer_1_d/temp
+    inter_layer_1 = inter_layer_1/temp
     IF (SIZE(bias_3) .GT. 0) THEN
-! in case of having 3 layers
+! Case with 3 layers
       CALL DOT_PRODUCT_2D_1D_D(weight_2, weight_2_d, inter_layer_1, &
 &                        inter_layer_1_d, inter_layer_2, inter_layer_2_d&
 &                       )
-      DO i=1,SIZE(inter_layer_2)
-        inter_layer_2_d(i) = inter_layer_2_d(i) + bias_2_d(i)
-        inter_layer_2(i) = inter_layer_2(i) + bias_2(i)
-        IF (0.01_sp*inter_layer_2(i) .LT. inter_layer_2(i)) THEN
-          inter_layer_2(i) = inter_layer_2(i)
-        ELSE
-          inter_layer_2_d(i) = 0.01_sp*inter_layer_2_d(i)
-          inter_layer_2(i) = 0.01_sp*inter_layer_2(i)
-        END IF
-      END DO
+      inter_layer_2_d = inter_layer_2_d + bias_2_d
+      inter_layer_2 = inter_layer_2 + bias_2
+! SiLU
+      temp0 = EXP(-inter_layer_2) + 1._sp
+      inter_layer_2_d = (inter_layer_2*EXP(-inter_layer_2)/temp0+1.0)*&
+&       inter_layer_2_d/temp0
+      inter_layer_2 = inter_layer_2/temp0
       CALL DOT_PRODUCT_2D_1D_D(weight_3, weight_3_d, inter_layer_2, &
 &                        inter_layer_2_d, output_layer, output_layer_d)
-      DO i=1,SIZE(output_layer)
 ! TanH
-        output_layer_d(i) = (1.0-TANH(output_layer(i)+bias_3(i))**2)*(&
-&         output_layer_d(i)+bias_3_d(i))
-        output_layer(i) = TANH(output_layer(i) + bias_3(i))
-      END DO
+      output_layer_d = (1.0-TANH(output_layer+bias_3)**2)*(&
+&       output_layer_d+bias_3_d)
+      output_layer = TANH(output_layer + bias_3)
     ELSE
-! in case of having 2 layers
+! Case with 2 layers
       CALL DOT_PRODUCT_2D_1D_D(weight_2, weight_2_d, inter_layer_1, &
 &                        inter_layer_1_d, output_layer, output_layer_d)
-      DO i=1,SIZE(output_layer)
 ! TanH
-        output_layer_d(i) = (1.0-TANH(output_layer(i)+bias_2(i))**2)*(&
-&         output_layer_d(i)+bias_2_d(i))
-        output_layer(i) = TANH(output_layer(i) + bias_2(i))
-      END DO
+      output_layer_d = (1.0-TANH(output_layer+bias_2)**2)*(&
+&       output_layer_d+bias_2_d)
+      output_layer = TANH(output_layer + bias_2)
     END IF
   END SUBROUTINE FORWARD_MLP_D
 
@@ -12974,86 +12966,54 @@ CONTAINS
     REAL(sp), DIMENSION(SIZE(bias_1)) :: inter_layer_1_b
     REAL(sp), DIMENSION(SIZE(bias_2)) :: inter_layer_2
     REAL(sp), DIMENSION(SIZE(bias_2)) :: inter_layer_2_b
-    INTEGER :: i
-    INTRINSIC MAX
+    INTRINSIC EXP
     INTRINSIC TANH
-    REAL(sp) :: temp_b
-    INTEGER :: ad_to
-    INTEGER :: branch
-    INTEGER :: ad_to0
-    INTEGER :: ad_to1
-    INTEGER :: ad_to2
+    REAL(sp), DIMENSION(SIZE(bias_1)) :: temp
+    REAL(sp), DIMENSION(SIZE(bias_2)) :: temp0
+    REAL(sp), DIMENSION(SIZE(bias_3, 1)) :: temp_b
+    REAL(sp), DIMENSION(SIZE(bias_2, 1)) :: temp_b0
     CALL DOT_PRODUCT_2D_1D(weight_1, input_layer, inter_layer_1)
-    DO i=1,SIZE(inter_layer_1)
-      inter_layer_1(i) = inter_layer_1(i) + bias_1(i)
-      IF (0.01_sp*inter_layer_1(i) .LT. inter_layer_1(i)) THEN
-        CALL PUSHCONTROL1B(0)
-        inter_layer_1(i) = inter_layer_1(i)
-      ELSE
-        inter_layer_1(i) = 0.01_sp*inter_layer_1(i)
-        CALL PUSHCONTROL1B(1)
-      END IF
-    END DO
-    CALL PUSHINTEGER4(i - 1)
+    inter_layer_1 = inter_layer_1 + bias_1
+! SiLU
+    CALL PUSHREAL4ARRAY(inter_layer_1, SIZE(bias_1))
+    inter_layer_1 = inter_layer_1*(1._sp/(1._sp+EXP(-inter_layer_1)))
     IF (SIZE(bias_3) .GT. 0) THEN
-! in case of having 3 layers
+! Case with 3 layers
       CALL DOT_PRODUCT_2D_1D(weight_2, inter_layer_1, inter_layer_2)
-      DO i=1,SIZE(inter_layer_2)
-        inter_layer_2(i) = inter_layer_2(i) + bias_2(i)
-        IF (0.01_sp*inter_layer_2(i) .LT. inter_layer_2(i)) THEN
-          CALL PUSHCONTROL1B(0)
-          inter_layer_2(i) = inter_layer_2(i)
-        ELSE
-          inter_layer_2(i) = 0.01_sp*inter_layer_2(i)
-          CALL PUSHCONTROL1B(1)
-        END IF
-      END DO
-      CALL PUSHINTEGER4(i - 1)
+      inter_layer_2 = inter_layer_2 + bias_2
+! SiLU
+      CALL PUSHREAL4ARRAY(inter_layer_2, SIZE(bias_2))
+      inter_layer_2 = inter_layer_2*(1._sp/(1._sp+EXP(-inter_layer_2)))
       CALL DOT_PRODUCT_2D_1D(weight_3, inter_layer_2, output_layer)
-      DO i=1,SIZE(output_layer)
-
-      END DO
-      ad_to1 = i - 1
-      DO i=ad_to1,1,-1
-        temp_b = (1.0-TANH(output_layer(i)+bias_3(i))**2)*output_layer_b&
-&         (i)
-        output_layer_b(i) = temp_b
-        bias_3_b(i) = bias_3_b(i) + temp_b
-      END DO
+! TanH
+      temp_b = (1.0-TANH(output_layer+bias_3)**2)*output_layer_b
+      output_layer_b = temp_b
+      bias_3_b = bias_3_b + temp_b
       CALL DOT_PRODUCT_2D_1D_B(weight_3, weight_3_b, inter_layer_2, &
 &                        inter_layer_2_b, output_layer, output_layer_b)
-      CALL POPINTEGER4(ad_to0)
-      DO i=ad_to0,1,-1
-        CALL POPCONTROL1B(branch)
-        IF (branch .NE. 0) inter_layer_2_b(i) = 0.01_sp*inter_layer_2_b(&
-&           i)
-        bias_2_b(i) = bias_2_b(i) + inter_layer_2_b(i)
-      END DO
+      CALL POPREAL4ARRAY(inter_layer_2, SIZE(bias_2))
+      temp0 = EXP(-inter_layer_2) + 1._sp
+      inter_layer_2_b = (1.0/temp0+EXP(-inter_layer_2)*inter_layer_2/&
+&       temp0**2)*inter_layer_2_b
+      bias_2_b = bias_2_b + inter_layer_2_b
       CALL DOT_PRODUCT_2D_1D_B(weight_2, weight_2_b, inter_layer_1, &
 &                        inter_layer_1_b, inter_layer_2, inter_layer_2_b&
 &                       )
     ELSE
-! in case of having 2 layers
+! Case with 2 layers
       CALL DOT_PRODUCT_2D_1D(weight_2, inter_layer_1, output_layer)
-      DO i=1,SIZE(output_layer)
-
-      END DO
-      ad_to2 = i - 1
-      DO i=ad_to2,1,-1
-        temp_b = (1.0-TANH(output_layer(i)+bias_2(i))**2)*output_layer_b&
-&         (i)
-        output_layer_b(i) = temp_b
-        bias_2_b(i) = bias_2_b(i) + temp_b
-      END DO
+! TanH
+      temp_b0 = (1.0-TANH(output_layer+bias_2)**2)*output_layer_b
+      output_layer_b = temp_b0
+      bias_2_b = bias_2_b + temp_b0
       CALL DOT_PRODUCT_2D_1D_B(weight_2, weight_2_b, inter_layer_1, &
 &                        inter_layer_1_b, output_layer, output_layer_b)
     END IF
-    CALL POPINTEGER4(ad_to)
-    DO i=ad_to,1,-1
-      CALL POPCONTROL1B(branch)
-      IF (branch .NE. 0) inter_layer_1_b(i) = 0.01_sp*inter_layer_1_b(i)
-      bias_1_b(i) = bias_1_b(i) + inter_layer_1_b(i)
-    END DO
+    CALL POPREAL4ARRAY(inter_layer_1, SIZE(bias_1))
+    temp = EXP(-inter_layer_1) + 1._sp
+    inter_layer_1_b = (1.0/temp+EXP(-inter_layer_1)*inter_layer_1/temp**&
+&     2)*inter_layer_1_b
+    bias_1_b = bias_1_b + inter_layer_1_b
     CALL DOT_PRODUCT_2D_1D_B(weight_1, weight_1_b, input_layer, &
 &                      input_layer_b, inter_layer_1, inter_layer_1_b)
   END SUBROUTINE FORWARD_MLP_B
@@ -13072,43 +13032,526 @@ CONTAINS
     INTRINSIC SIZE
     REAL(sp), DIMENSION(SIZE(bias_1)) :: inter_layer_1
     REAL(sp), DIMENSION(SIZE(bias_2)) :: inter_layer_2
-    INTEGER :: i
-    INTRINSIC MAX
+    INTRINSIC EXP
     INTRINSIC TANH
     CALL DOT_PRODUCT_2D_1D(weight_1, input_layer, inter_layer_1)
-    DO i=1,SIZE(inter_layer_1)
-      inter_layer_1(i) = inter_layer_1(i) + bias_1(i)
-      IF (0.01_sp*inter_layer_1(i) .LT. inter_layer_1(i)) THEN
-        inter_layer_1(i) = inter_layer_1(i)
-      ELSE
-        inter_layer_1(i) = 0.01_sp*inter_layer_1(i)
-      END IF
-    END DO
+    inter_layer_1 = inter_layer_1 + bias_1
+! SiLU
+    inter_layer_1 = inter_layer_1*(1._sp/(1._sp+EXP(-inter_layer_1)))
     IF (SIZE(bias_3) .GT. 0) THEN
-! in case of having 3 layers
+! Case with 3 layers
       CALL DOT_PRODUCT_2D_1D(weight_2, inter_layer_1, inter_layer_2)
-      DO i=1,SIZE(inter_layer_2)
-        inter_layer_2(i) = inter_layer_2(i) + bias_2(i)
-        IF (0.01_sp*inter_layer_2(i) .LT. inter_layer_2(i)) THEN
-          inter_layer_2(i) = inter_layer_2(i)
-        ELSE
-          inter_layer_2(i) = 0.01_sp*inter_layer_2(i)
-        END IF
-      END DO
+      inter_layer_2 = inter_layer_2 + bias_2
+! SiLU
+      inter_layer_2 = inter_layer_2*(1._sp/(1._sp+EXP(-inter_layer_2)))
       CALL DOT_PRODUCT_2D_1D(weight_3, inter_layer_2, output_layer)
-      DO i=1,SIZE(output_layer)
 ! TanH
-        output_layer(i) = TANH(output_layer(i) + bias_3(i))
-      END DO
+      output_layer = TANH(output_layer + bias_3)
     ELSE
-! in case of having 2 layers
+! Case with 2 layers
       CALL DOT_PRODUCT_2D_1D(weight_2, inter_layer_1, output_layer)
-      DO i=1,SIZE(output_layer)
 ! TanH
-        output_layer(i) = TANH(output_layer(i) + bias_2(i))
-      END DO
+      output_layer = TANH(output_layer + bias_2)
     END IF
   END SUBROUTINE FORWARD_MLP
+
+!  Differentiation of forward_and_backward_mlp in forward (tangent) mode (with options fixinterface noISIZE context):
+!   variations   of useful results: output_jacobian_1 output_jacobian_2
+!                output_layer
+!   with respect to varying inputs: bias_1 bias_2 bias_3 input_layer
+!                weight_1 weight_2 weight_3
+  SUBROUTINE FORWARD_AND_BACKWARD_MLP_D(weight_1, weight_1_d, bias_1, &
+&   bias_1_d, weight_2, weight_2_d, bias_2, bias_2_d, weight_3, &
+&   weight_3_d, bias_3, bias_3_d, input_layer, input_layer_d, &
+&   output_layer, output_layer_d, output_jacobian_1, output_jacobian_1_d&
+&   , output_jacobian_2, output_jacobian_2_d)
+    IMPLICIT NONE
+    REAL(sp), DIMENSION(:, :), INTENT(IN) :: weight_1
+    REAL(sp), DIMENSION(:, :), INTENT(IN) :: weight_1_d
+    REAL(sp), DIMENSION(:), INTENT(IN) :: bias_1
+    REAL(sp), DIMENSION(:), INTENT(IN) :: bias_1_d
+    REAL(sp), DIMENSION(:, :), INTENT(IN) :: weight_2
+    REAL(sp), DIMENSION(:, :), INTENT(IN) :: weight_2_d
+    REAL(sp), DIMENSION(:), INTENT(IN) :: bias_2
+    REAL(sp), DIMENSION(:), INTENT(IN) :: bias_2_d
+    REAL(sp), DIMENSION(:, :), INTENT(IN) :: weight_3
+    REAL(sp), DIMENSION(:, :), INTENT(IN) :: weight_3_d
+    REAL(sp), DIMENSION(:), INTENT(IN) :: bias_3
+    REAL(sp), DIMENSION(:), INTENT(IN) :: bias_3_d
+    REAL(sp), DIMENSION(:), INTENT(IN) :: input_layer
+    REAL(sp), DIMENSION(:), INTENT(IN) :: input_layer_d
+    REAL(sp), DIMENSION(:), INTENT(OUT) :: output_layer
+    REAL(sp), DIMENSION(:), INTENT(OUT) :: output_layer_d
+    REAL(sp), DIMENSION(:), INTENT(OUT) :: output_jacobian_1
+    REAL(sp), DIMENSION(:), INTENT(OUT) :: output_jacobian_1_d
+    REAL(sp), DIMENSION(:), INTENT(OUT) :: output_jacobian_2
+    REAL(sp), DIMENSION(:), INTENT(OUT) :: output_jacobian_2_d
+    INTRINSIC SIZE
+    REAL(sp), DIMENSION(SIZE(bias_1)) :: inter_layer_1, inter_layer_1_tf&
+&   , inter_layer_1_grad, layer_1_grad
+    REAL(sp), DIMENSION(SIZE(bias_1)) :: inter_layer_1_d, &
+&   inter_layer_1_tf_d, inter_layer_1_grad_d, layer_1_grad_d
+    REAL(sp), DIMENSION(SIZE(bias_2)) :: inter_layer_2, inter_layer_2_tf&
+&   , inter_layer_2_grad, layer_2_grad
+    REAL(sp), DIMENSION(SIZE(bias_2)) :: inter_layer_2_d, &
+&   inter_layer_2_tf_d, inter_layer_2_grad_d, layer_2_grad_d
+    INTEGER :: i, j, k
+    INTRINSIC EXP
+    INTRINSIC TANH
+    REAL(sp), DIMENSION(size(bias_1)) :: temp
+    REAL(sp), DIMENSION(size(bias_2)) :: temp0
+    output_jacobian_1 = 0._sp
+    output_jacobian_2 = 0._sp
+    CALL DOT_PRODUCT_2D_1D_D(weight_1, weight_1_d, input_layer, &
+&                      input_layer_d, inter_layer_1, inter_layer_1_d)
+    inter_layer_1_d = inter_layer_1_d + bias_1_d
+    inter_layer_1 = inter_layer_1 + bias_1
+! SiLU
+    temp = EXP(-inter_layer_1) + 1._sp
+    inter_layer_1_tf_d = (inter_layer_1*EXP(-inter_layer_1)/temp+1.0)*&
+&     inter_layer_1_d/temp
+    inter_layer_1_tf = inter_layer_1/temp
+! Derivative of SiLU
+    temp = EXP(-inter_layer_1) + 1._sp
+    inter_layer_1_grad_d = inter_layer_1_tf_d + ((1._sp-inter_layer_1_tf&
+&     )*EXP(-inter_layer_1)*inter_layer_1_d/temp-inter_layer_1_tf_d)/&
+&     temp
+    inter_layer_1_grad = inter_layer_1_tf + (1._sp-inter_layer_1_tf)/&
+&     temp
+    IF (SIZE(bias_3) .GT. 0) THEN
+! Case with 3 layers
+      CALL DOT_PRODUCT_2D_1D_D(weight_2, weight_2_d, inter_layer_1_tf, &
+&                        inter_layer_1_tf_d, inter_layer_2, &
+&                        inter_layer_2_d)
+      inter_layer_2_d = inter_layer_2_d + bias_2_d
+      inter_layer_2 = inter_layer_2 + bias_2
+! SiLU
+      temp0 = EXP(-inter_layer_2) + 1._sp
+      inter_layer_2_tf_d = (inter_layer_2*EXP(-inter_layer_2)/temp0+1.0)&
+&       *inter_layer_2_d/temp0
+      inter_layer_2_tf = inter_layer_2/temp0
+! Derivative of SiLU
+      temp0 = EXP(-inter_layer_2) + 1._sp
+      inter_layer_2_grad_d = inter_layer_2_tf_d + ((1._sp-&
+&       inter_layer_2_tf)*EXP(-inter_layer_2)*inter_layer_2_d/temp0-&
+&       inter_layer_2_tf_d)/temp0
+      inter_layer_2_grad = inter_layer_2_tf + (1._sp-inter_layer_2_tf)/&
+&       temp0
+      CALL DOT_PRODUCT_2D_1D_D(weight_3, weight_3_d, inter_layer_2_tf, &
+&                        inter_layer_2_tf_d, output_layer, &
+&                        output_layer_d)
+! TanH
+      output_layer_d = (1.0-TANH(output_layer+bias_3)**2)*(&
+&       output_layer_d+bias_3_d)
+      output_layer = TANH(output_layer + bias_3)
+      output_jacobian_1_d = 0.0_4
+      output_jacobian_2_d = 0.0_4
+      layer_2_grad_d = 0.0_4
+! Compute Jacobian matrix of output wrt input MLP
+      DO i=1,SIZE(output_layer)
+        DO j=1,SIZE(inter_layer_2)
+! Derivative of TanH
+          layer_2_grad_d(j) = (1._sp-output_layer(i)**2)*weight_3_d(i, j&
+&           ) - weight_3(i, j)*2*output_layer(i)*output_layer_d(i)
+          layer_2_grad(j) = (1._sp-output_layer(i)**2)*weight_3(i, j)
+          layer_2_grad_d(j) = inter_layer_2_grad(j)*layer_2_grad_d(j) + &
+&           layer_2_grad(j)*inter_layer_2_grad_d(j)
+          layer_2_grad(j) = layer_2_grad(j)*inter_layer_2_grad(j)
+        END DO
+! Gradient of second layer wrt first layer
+        layer_1_grad = 0._sp
+        layer_1_grad_d = 0.0_4
+        DO j=1,SIZE(inter_layer_1)
+          DO k=1,SIZE(inter_layer_2)
+            layer_1_grad_d(j) = layer_1_grad_d(j) + weight_2(k, j)*&
+&             layer_2_grad_d(k) + layer_2_grad(k)*weight_2_d(k, j)
+            layer_1_grad(j) = layer_1_grad(j) + layer_2_grad(k)*weight_2&
+&             (k, j)
+          END DO
+          layer_1_grad_d(j) = inter_layer_1_grad(j)*layer_1_grad_d(j) + &
+&           layer_1_grad(j)*inter_layer_1_grad_d(j)
+          layer_1_grad(j) = layer_1_grad(j)*inter_layer_1_grad(j)
+        END DO
+! Gradient of first layer wrt input layer
+        DO k=1,SIZE(inter_layer_1)
+          output_jacobian_1_d(i) = output_jacobian_1_d(i) + weight_1(k, &
+&           1)*layer_1_grad_d(k) + layer_1_grad(k)*weight_1_d(k, 1)
+          output_jacobian_1(i) = output_jacobian_1(i) + layer_1_grad(k)*&
+&           weight_1(k, 1)
+          output_jacobian_2_d(i) = output_jacobian_2_d(i) + weight_1(k, &
+&           2)*layer_1_grad_d(k) + layer_1_grad(k)*weight_1_d(k, 2)
+          output_jacobian_2(i) = output_jacobian_2(i) + layer_1_grad(k)*&
+&           weight_1(k, 2)
+        END DO
+      END DO
+    ELSE
+! Case with 2 layers
+      CALL DOT_PRODUCT_2D_1D_D(weight_2, weight_2_d, inter_layer_1_tf, &
+&                        inter_layer_1_tf_d, output_layer, &
+&                        output_layer_d)
+      output_layer_d = (1.0-TANH(output_layer+bias_2)**2)*(&
+&       output_layer_d+bias_2_d)
+      output_layer = TANH(output_layer + bias_2)
+      output_jacobian_1_d = 0.0_4
+      output_jacobian_2_d = 0.0_4
+      layer_1_grad_d = 0.0_4
+! Compute Jacobian matrix of output wrt input MLP
+      DO i=1,SIZE(output_layer)
+        DO j=1,SIZE(inter_layer_1)
+! Derivative of TanH
+          layer_1_grad_d(j) = (1._sp-output_layer(i)**2)*weight_2_d(i, j&
+&           ) - weight_2(i, j)*2*output_layer(i)*output_layer_d(i)
+          layer_1_grad(j) = (1._sp-output_layer(i)**2)*weight_2(i, j)
+          layer_1_grad_d(j) = inter_layer_1_grad(j)*layer_1_grad_d(j) + &
+&           layer_1_grad(j)*inter_layer_1_grad_d(j)
+          layer_1_grad(j) = layer_1_grad(j)*inter_layer_1_grad(j)
+        END DO
+! Gradient of first layer wrt input layer
+        DO k=1,SIZE(inter_layer_1)
+          output_jacobian_1_d(i) = output_jacobian_1_d(i) + weight_1(k, &
+&           1)*layer_1_grad_d(k) + layer_1_grad(k)*weight_1_d(k, 1)
+          output_jacobian_1(i) = output_jacobian_1(i) + layer_1_grad(k)*&
+&           weight_1(k, 1)
+          output_jacobian_2_d(i) = output_jacobian_2_d(i) + weight_1(k, &
+&           2)*layer_1_grad_d(k) + layer_1_grad(k)*weight_1_d(k, 2)
+          output_jacobian_2(i) = output_jacobian_2(i) + layer_1_grad(k)*&
+&           weight_1(k, 2)
+        END DO
+      END DO
+    END IF
+  END SUBROUTINE FORWARD_AND_BACKWARD_MLP_D
+
+!  Differentiation of forward_and_backward_mlp in reverse (adjoint) mode (with options fixinterface noISIZE context):
+!   gradient     of useful results: output_jacobian_1 output_jacobian_2
+!                output_layer bias_1 bias_2 bias_3 weight_1 weight_2
+!                weight_3
+!   with respect to varying inputs: bias_1 bias_2 bias_3 input_layer
+!                weight_1 weight_2 weight_3
+  SUBROUTINE FORWARD_AND_BACKWARD_MLP_B(weight_1, weight_1_b, bias_1, &
+&   bias_1_b, weight_2, weight_2_b, bias_2, bias_2_b, weight_3, &
+&   weight_3_b, bias_3, bias_3_b, input_layer, input_layer_b, &
+&   output_layer, output_layer_b, output_jacobian_1, output_jacobian_1_b&
+&   , output_jacobian_2, output_jacobian_2_b)
+    IMPLICIT NONE
+    REAL(sp), DIMENSION(:, :), INTENT(IN) :: weight_1
+    REAL(sp), DIMENSION(:, :) :: weight_1_b
+    REAL(sp), DIMENSION(:), INTENT(IN) :: bias_1
+    REAL(sp), DIMENSION(:) :: bias_1_b
+    REAL(sp), DIMENSION(:, :), INTENT(IN) :: weight_2
+    REAL(sp), DIMENSION(:, :) :: weight_2_b
+    REAL(sp), DIMENSION(:), INTENT(IN) :: bias_2
+    REAL(sp), DIMENSION(:) :: bias_2_b
+    REAL(sp), DIMENSION(:, :), INTENT(IN) :: weight_3
+    REAL(sp), DIMENSION(:, :) :: weight_3_b
+    REAL(sp), DIMENSION(:), INTENT(IN) :: bias_3
+    REAL(sp), DIMENSION(:) :: bias_3_b
+    REAL(sp), DIMENSION(:), INTENT(IN) :: input_layer
+    REAL(sp), DIMENSION(:) :: input_layer_b
+    REAL(sp), DIMENSION(:) :: output_layer
+    REAL(sp), DIMENSION(:) :: output_layer_b
+    REAL(sp), DIMENSION(:) :: output_jacobian_1
+    REAL(sp), DIMENSION(:) :: output_jacobian_1_b
+    REAL(sp), DIMENSION(:) :: output_jacobian_2
+    REAL(sp), DIMENSION(:) :: output_jacobian_2_b
+    INTRINSIC SIZE
+    REAL(sp), DIMENSION(SIZE(bias_1)) :: inter_layer_1, inter_layer_1_tf&
+&   , inter_layer_1_grad, layer_1_grad
+    REAL(sp), DIMENSION(SIZE(bias_1)) :: inter_layer_1_b, &
+&   inter_layer_1_tf_b, inter_layer_1_grad_b, layer_1_grad_b
+    REAL(sp), DIMENSION(SIZE(bias_2)) :: inter_layer_2, inter_layer_2_tf&
+&   , inter_layer_2_grad, layer_2_grad
+    REAL(sp), DIMENSION(SIZE(bias_2)) :: inter_layer_2_b, &
+&   inter_layer_2_tf_b, inter_layer_2_grad_b, layer_2_grad_b
+    INTEGER :: i, j, k
+    INTRINSIC EXP
+    INTRINSIC TANH
+    REAL(sp), DIMENSION(size(bias_1)) :: temp
+    REAL(sp), DIMENSION(size(bias_2)) :: temp0
+    REAL(sp), DIMENSION(SIZE(bias_3, 1)) :: temp_b
+    REAL(sp), DIMENSION(SIZE(bias_2, 1)) :: temp_b0
+    INTEGER :: ad_to
+    INTEGER :: ad_to0
+    INTEGER :: ad_to1
+    INTEGER :: ad_to2
+    INTEGER :: ad_to3
+    INTEGER :: ad_to4
+    INTEGER :: ad_to5
+    INTEGER :: ad_to6
+    CALL DOT_PRODUCT_2D_1D(weight_1, input_layer, inter_layer_1)
+    inter_layer_1 = inter_layer_1 + bias_1
+! SiLU
+    inter_layer_1_tf = inter_layer_1*(1._sp/(1._sp+EXP(-inter_layer_1)))
+! Derivative of SiLU
+    inter_layer_1_grad = inter_layer_1_tf + (1._sp-inter_layer_1_tf)/(&
+&     1._sp+EXP(-inter_layer_1))
+    IF (SIZE(bias_3) .GT. 0) THEN
+! Case with 3 layers
+      CALL DOT_PRODUCT_2D_1D(weight_2, inter_layer_1_tf, inter_layer_2)
+      inter_layer_2 = inter_layer_2 + bias_2
+! SiLU
+      inter_layer_2_tf = inter_layer_2*(1._sp/(1._sp+EXP(-inter_layer_2)&
+&       ))
+! Derivative of SiLU
+      inter_layer_2_grad = inter_layer_2_tf + (1._sp-inter_layer_2_tf)/(&
+&       1._sp+EXP(-inter_layer_2))
+      CALL DOT_PRODUCT_2D_1D(weight_3, inter_layer_2_tf, output_layer)
+! TanH
+      CALL PUSHREAL4ARRAY(output_layer, SIZE(output_layer, 1))
+      output_layer = TANH(output_layer + bias_3)
+! Compute Jacobian matrix of output wrt input MLP
+      DO i=1,SIZE(output_layer)
+        DO j=1,SIZE(inter_layer_2)
+! Derivative of TanH
+          CALL PUSHREAL4(layer_2_grad(j))
+          layer_2_grad(j) = (1._sp-output_layer(i)**2)*weight_3(i, j)
+          CALL PUSHREAL4(layer_2_grad(j))
+          layer_2_grad(j) = layer_2_grad(j)*inter_layer_2_grad(j)
+        END DO
+        CALL PUSHINTEGER4(j - 1)
+! Gradient of second layer wrt first layer
+        CALL PUSHREAL4ARRAY(layer_1_grad, SIZE(bias_1))
+        layer_1_grad = 0._sp
+        DO j=1,SIZE(inter_layer_1)
+          DO k=1,SIZE(inter_layer_2)
+            layer_1_grad(j) = layer_1_grad(j) + layer_2_grad(k)*weight_2&
+&             (k, j)
+          END DO
+          CALL PUSHINTEGER4(k - 1)
+          CALL PUSHREAL4(layer_1_grad(j))
+          layer_1_grad(j) = layer_1_grad(j)*inter_layer_1_grad(j)
+        END DO
+        CALL PUSHINTEGER4(j - 1)
+! Gradient of first layer wrt input layer
+        DO k=1,SIZE(inter_layer_1)
+
+        END DO
+        CALL PUSHINTEGER4(k - 1)
+      END DO
+      ad_to3 = i - 1
+      inter_layer_1_grad_b = 0.0_4
+      layer_2_grad_b = 0.0_4
+      inter_layer_2_grad_b = 0.0_4
+      DO i=ad_to3,1,-1
+        layer_1_grad_b = 0.0_4
+        CALL POPINTEGER4(ad_to2)
+        DO k=ad_to2,1,-1
+          layer_1_grad_b(k) = layer_1_grad_b(k) + weight_1(k, 2)*&
+&           output_jacobian_2_b(i) + weight_1(k, 1)*output_jacobian_1_b(&
+&           i)
+          weight_1_b(k, 2) = weight_1_b(k, 2) + layer_1_grad(k)*&
+&           output_jacobian_2_b(i)
+          weight_1_b(k, 1) = weight_1_b(k, 1) + layer_1_grad(k)*&
+&           output_jacobian_1_b(i)
+        END DO
+        CALL POPINTEGER4(ad_to1)
+        DO j=ad_to1,1,-1
+          CALL POPREAL4(layer_1_grad(j))
+          inter_layer_1_grad_b(j) = inter_layer_1_grad_b(j) + &
+&           layer_1_grad(j)*layer_1_grad_b(j)
+          layer_1_grad_b(j) = inter_layer_1_grad(j)*layer_1_grad_b(j)
+          CALL POPINTEGER4(ad_to0)
+          DO k=ad_to0,1,-1
+            layer_2_grad_b(k) = layer_2_grad_b(k) + weight_2(k, j)*&
+&             layer_1_grad_b(j)
+            weight_2_b(k, j) = weight_2_b(k, j) + layer_2_grad(k)*&
+&             layer_1_grad_b(j)
+          END DO
+        END DO
+        CALL POPREAL4ARRAY(layer_1_grad, SIZE(bias_1))
+        CALL POPINTEGER4(ad_to)
+        DO j=ad_to,1,-1
+          CALL POPREAL4(layer_2_grad(j))
+          inter_layer_2_grad_b(j) = inter_layer_2_grad_b(j) + &
+&           layer_2_grad(j)*layer_2_grad_b(j)
+          layer_2_grad_b(j) = inter_layer_2_grad(j)*layer_2_grad_b(j)
+          CALL POPREAL4(layer_2_grad(j))
+          output_layer_b(i) = output_layer_b(i) - 2*output_layer(i)*&
+&           weight_3(i, j)*layer_2_grad_b(j)
+          weight_3_b(i, j) = weight_3_b(i, j) + (1._sp-output_layer(i)**&
+&           2)*layer_2_grad_b(j)
+          layer_2_grad_b(j) = 0.0_4
+        END DO
+      END DO
+      CALL POPREAL4ARRAY(output_layer, SIZE(output_layer, 1))
+      temp_b = (1.0-TANH(output_layer+bias_3)**2)*output_layer_b
+      output_layer_b = temp_b
+      bias_3_b = bias_3_b + temp_b
+      CALL DOT_PRODUCT_2D_1D_B(weight_3, weight_3_b, inter_layer_2_tf, &
+&                        inter_layer_2_tf_b, output_layer, &
+&                        output_layer_b)
+      inter_layer_2_b = 0.0_4
+      temp0 = EXP(-inter_layer_2) + 1._sp
+      inter_layer_2_tf_b = inter_layer_2_tf_b + (1.0-1.0/temp0)*&
+&       inter_layer_2_grad_b
+      inter_layer_2_b = EXP(-inter_layer_2)*(1._sp-inter_layer_2_tf)*&
+&       inter_layer_2_grad_b/temp0**2
+      temp0 = EXP(-inter_layer_2) + 1._sp
+      inter_layer_2_b = inter_layer_2_b + (1.0/temp0+EXP(-inter_layer_2)&
+&       *inter_layer_2/temp0**2)*inter_layer_2_tf_b
+      bias_2_b = bias_2_b + inter_layer_2_b
+      CALL DOT_PRODUCT_2D_1D_B(weight_2, weight_2_b, inter_layer_1_tf, &
+&                        inter_layer_1_tf_b, inter_layer_2, &
+&                        inter_layer_2_b)
+    ELSE
+! Case with 2 layers
+      CALL DOT_PRODUCT_2D_1D(weight_2, inter_layer_1_tf, output_layer)
+      CALL PUSHREAL4ARRAY(output_layer, SIZE(output_layer, 1))
+      output_layer = TANH(output_layer + bias_2)
+! Compute Jacobian matrix of output wrt input MLP
+      DO i=1,SIZE(output_layer)
+        DO j=1,SIZE(inter_layer_1)
+! Derivative of TanH
+          CALL PUSHREAL4(layer_1_grad(j))
+          layer_1_grad(j) = (1._sp-output_layer(i)**2)*weight_2(i, j)
+          CALL PUSHREAL4(layer_1_grad(j))
+          layer_1_grad(j) = layer_1_grad(j)*inter_layer_1_grad(j)
+        END DO
+        CALL PUSHINTEGER4(j - 1)
+! Gradient of first layer wrt input layer
+        DO k=1,SIZE(inter_layer_1)
+
+        END DO
+        CALL PUSHINTEGER4(k - 1)
+      END DO
+      ad_to6 = i - 1
+      inter_layer_1_grad_b = 0.0_4
+      layer_1_grad_b = 0.0_4
+      DO i=ad_to6,1,-1
+        CALL POPINTEGER4(ad_to5)
+        DO k=ad_to5,1,-1
+          layer_1_grad_b(k) = layer_1_grad_b(k) + weight_1(k, 2)*&
+&           output_jacobian_2_b(i) + weight_1(k, 1)*output_jacobian_1_b(&
+&           i)
+          weight_1_b(k, 2) = weight_1_b(k, 2) + layer_1_grad(k)*&
+&           output_jacobian_2_b(i)
+          weight_1_b(k, 1) = weight_1_b(k, 1) + layer_1_grad(k)*&
+&           output_jacobian_1_b(i)
+        END DO
+        CALL POPINTEGER4(ad_to4)
+        DO j=ad_to4,1,-1
+          CALL POPREAL4(layer_1_grad(j))
+          inter_layer_1_grad_b(j) = inter_layer_1_grad_b(j) + &
+&           layer_1_grad(j)*layer_1_grad_b(j)
+          layer_1_grad_b(j) = inter_layer_1_grad(j)*layer_1_grad_b(j)
+          CALL POPREAL4(layer_1_grad(j))
+          output_layer_b(i) = output_layer_b(i) - 2*output_layer(i)*&
+&           weight_2(i, j)*layer_1_grad_b(j)
+          weight_2_b(i, j) = weight_2_b(i, j) + (1._sp-output_layer(i)**&
+&           2)*layer_1_grad_b(j)
+          layer_1_grad_b(j) = 0.0_4
+        END DO
+      END DO
+      CALL POPREAL4ARRAY(output_layer, SIZE(output_layer, 1))
+      temp_b0 = (1.0-TANH(output_layer+bias_2)**2)*output_layer_b
+      output_layer_b = temp_b0
+      bias_2_b = bias_2_b + temp_b0
+      CALL DOT_PRODUCT_2D_1D_B(weight_2, weight_2_b, inter_layer_1_tf, &
+&                        inter_layer_1_tf_b, output_layer, &
+&                        output_layer_b)
+    END IF
+    inter_layer_1_b = 0.0_4
+    temp = EXP(-inter_layer_1) + 1._sp
+    inter_layer_1_tf_b = inter_layer_1_tf_b + (1.0-1.0/temp)*&
+&     inter_layer_1_grad_b
+    inter_layer_1_b = EXP(-inter_layer_1)*(1._sp-inter_layer_1_tf)*&
+&     inter_layer_1_grad_b/temp**2
+    temp = EXP(-inter_layer_1) + 1._sp
+    inter_layer_1_b = inter_layer_1_b + (1.0/temp+EXP(-inter_layer_1)*&
+&     inter_layer_1/temp**2)*inter_layer_1_tf_b
+    bias_1_b = bias_1_b + inter_layer_1_b
+    CALL DOT_PRODUCT_2D_1D_B(weight_1, weight_1_b, input_layer, &
+&                      input_layer_b, inter_layer_1, inter_layer_1_b)
+  END SUBROUTINE FORWARD_AND_BACKWARD_MLP_B
+
+  SUBROUTINE FORWARD_AND_BACKWARD_MLP(weight_1, bias_1, weight_2, bias_2&
+&   , weight_3, bias_3, input_layer, output_layer, output_jacobian_1, &
+&   output_jacobian_2)
+    IMPLICIT NONE
+    REAL(sp), DIMENSION(:, :), INTENT(IN) :: weight_1
+    REAL(sp), DIMENSION(:), INTENT(IN) :: bias_1
+    REAL(sp), DIMENSION(:, :), INTENT(IN) :: weight_2
+    REAL(sp), DIMENSION(:), INTENT(IN) :: bias_2
+    REAL(sp), DIMENSION(:, :), INTENT(IN) :: weight_3
+    REAL(sp), DIMENSION(:), INTENT(IN) :: bias_3
+    REAL(sp), DIMENSION(:), INTENT(IN) :: input_layer
+    REAL(sp), DIMENSION(:), INTENT(OUT) :: output_layer
+    REAL(sp), DIMENSION(:), INTENT(OUT) :: output_jacobian_1
+    REAL(sp), DIMENSION(:), INTENT(OUT) :: output_jacobian_2
+    INTRINSIC SIZE
+    REAL(sp), DIMENSION(SIZE(bias_1)) :: inter_layer_1, inter_layer_1_tf&
+&   , inter_layer_1_grad, layer_1_grad
+    REAL(sp), DIMENSION(SIZE(bias_2)) :: inter_layer_2, inter_layer_2_tf&
+&   , inter_layer_2_grad, layer_2_grad
+    INTEGER :: i, j, k
+    INTRINSIC EXP
+    INTRINSIC TANH
+    output_jacobian_1 = 0._sp
+    output_jacobian_2 = 0._sp
+    CALL DOT_PRODUCT_2D_1D(weight_1, input_layer, inter_layer_1)
+    inter_layer_1 = inter_layer_1 + bias_1
+! SiLU
+    inter_layer_1_tf = inter_layer_1*(1._sp/(1._sp+EXP(-inter_layer_1)))
+! Derivative of SiLU
+    inter_layer_1_grad = inter_layer_1_tf + (1._sp-inter_layer_1_tf)/(&
+&     1._sp+EXP(-inter_layer_1))
+    IF (SIZE(bias_3) .GT. 0) THEN
+! Case with 3 layers
+      CALL DOT_PRODUCT_2D_1D(weight_2, inter_layer_1_tf, inter_layer_2)
+      inter_layer_2 = inter_layer_2 + bias_2
+! SiLU
+      inter_layer_2_tf = inter_layer_2*(1._sp/(1._sp+EXP(-inter_layer_2)&
+&       ))
+! Derivative of SiLU
+      inter_layer_2_grad = inter_layer_2_tf + (1._sp-inter_layer_2_tf)/(&
+&       1._sp+EXP(-inter_layer_2))
+      CALL DOT_PRODUCT_2D_1D(weight_3, inter_layer_2_tf, output_layer)
+! TanH
+      output_layer = TANH(output_layer + bias_3)
+! Compute Jacobian matrix of output wrt input MLP
+      DO i=1,SIZE(output_layer)
+        DO j=1,SIZE(inter_layer_2)
+! Derivative of TanH
+          layer_2_grad(j) = (1._sp-output_layer(i)**2)*weight_3(i, j)
+          layer_2_grad(j) = layer_2_grad(j)*inter_layer_2_grad(j)
+        END DO
+! Gradient of second layer wrt first layer
+        layer_1_grad = 0._sp
+        DO j=1,SIZE(inter_layer_1)
+          DO k=1,SIZE(inter_layer_2)
+            layer_1_grad(j) = layer_1_grad(j) + layer_2_grad(k)*weight_2&
+&             (k, j)
+          END DO
+          layer_1_grad(j) = layer_1_grad(j)*inter_layer_1_grad(j)
+        END DO
+! Gradient of first layer wrt input layer
+        DO k=1,SIZE(inter_layer_1)
+          output_jacobian_1(i) = output_jacobian_1(i) + layer_1_grad(k)*&
+&           weight_1(k, 1)
+          output_jacobian_2(i) = output_jacobian_2(i) + layer_1_grad(k)*&
+&           weight_1(k, 2)
+        END DO
+      END DO
+    ELSE
+! Case with 2 layers
+      CALL DOT_PRODUCT_2D_1D(weight_2, inter_layer_1_tf, output_layer)
+      output_layer = TANH(output_layer + bias_2)
+! Compute Jacobian matrix of output wrt input MLP
+      DO i=1,SIZE(output_layer)
+        DO j=1,SIZE(inter_layer_1)
+! Derivative of TanH
+          layer_1_grad(j) = (1._sp-output_layer(i)**2)*weight_2(i, j)
+          layer_1_grad(j) = layer_1_grad(j)*inter_layer_1_grad(j)
+        END DO
+! Gradient of first layer wrt input layer
+        DO k=1,SIZE(inter_layer_1)
+          output_jacobian_1(i) = output_jacobian_1(i) + layer_1_grad(k)*&
+&           weight_1(k, 1)
+          output_jacobian_2(i) = output_jacobian_2(i) + layer_1_grad(k)*&
+&           weight_1(k, 2)
+        END DO
+      END DO
+    END IF
+  END SUBROUTINE FORWARD_AND_BACKWARD_MLP
 
 END MODULE MD_NEURAL_NETWORK_DIFF
 
@@ -13157,7 +13600,7 @@ MODULE MD_GR_OPERATOR_DIFF
   USE MWD_ATMOS_MANIPULATION_DIFF
 !% only: solve_linear_system_2vars
   USE MD_ALGEBRA_DIFF
-!% only: forward_mlp
+!% only: forward_mlp, forward_and_backward_mlp
   USE MD_NEURAL_NETWORK_DIFF
   IMPLICIT NONE
 
@@ -13280,20 +13723,22 @@ CONTAINS
   END SUBROUTINE GR_INTERCEPTION
 
 !  Differentiation of gr_production in forward (tangent) mode (with options fixinterface noISIZE context):
-!   variations   of useful results: hp perc pr
+!   variations   of useful results: hp pn perc pr
 !   with respect to varying inputs: fq_ps hp en fq_es cp pn
   SUBROUTINE GR_PRODUCTION_D(fq_ps, fq_ps_d, fq_es, fq_es_d, pn, pn_d, &
-&   en, en_d, cp, cp_d, beta, hp, hp_d, pr, pr_d, perc, perc_d)
+&   en, en_d, imperviousness, cp, cp_d, beta, hp, hp_d, pr, pr_d, perc, &
+&   perc_d, ps, es)
     IMPLICIT NONE
-    REAL(sp), INTENT(IN) :: fq_ps, fq_es, pn, en, cp, beta
-    REAL(sp), INTENT(IN) :: fq_ps_d, fq_es_d, pn_d, en_d, cp_d
-    REAL(sp), INTENT(INOUT) :: hp
-    REAL(sp), INTENT(INOUT) :: hp_d
-    REAL(sp), INTENT(OUT) :: pr, perc
+    REAL(sp), INTENT(IN) :: fq_ps, fq_es, en, imperviousness, cp, beta
+    REAL(sp), INTENT(IN) :: fq_ps_d, fq_es_d, en_d, cp_d
+    REAL(sp), INTENT(INOUT) :: pn, hp
+    REAL(sp), INTENT(INOUT) :: pn_d, hp_d
+    REAL(sp), INTENT(OUT) :: pr, perc, ps, es
     REAL(sp), INTENT(OUT) :: pr_d, perc_d
-    REAL(sp) :: inv_cp, ps, es, hp_imd
-    REAL(sp) :: inv_cp_d, ps_d, es_d, hp_imd_d
+    REAL(sp) :: inv_cp, hp_imd
+    REAL(sp) :: inv_cp_d, hp_imd_d
     INTRINSIC TANH
+    INTRINSIC MIN
     REAL(sp) :: pwx1
     REAL(sp) :: pwx1_d
     REAL(sp) :: pwr1
@@ -13302,9 +13747,14 @@ CONTAINS
     REAL(sp) :: temp0
     REAL(sp) :: temp1
     REAL(sp) :: temp2
+    REAL(sp) :: ps_d
+    REAL(sp) :: es_d
     inv_cp_d = -(cp_d/cp**2)
     inv_cp = 1._sp/cp
     pr = 0._sp
+! impervious area percentage at cell scale applied to neutralized rainfall - no infiltration for imperviousness*pn
+    pn_d = (1._sp-imperviousness)*pn_d
+    pn = (1._sp-imperviousness)*pn
     temp = TANH(pn*inv_cp)
     temp0 = TANH(pn*inv_cp)
     temp1 = cp*(-(hp*hp)+1._sp)
@@ -13313,9 +13763,13 @@ CONTAINS
 &     inv_cp)**2)*(inv_cp*pn_d+pn*inv_cp_d)-temp2*(temp*hp_d+hp*(1.0-&
 &     TANH(pn*inv_cp)**2)*(inv_cp*pn_d+pn*inv_cp_d)))/(hp*temp+1._sp)
     ps = temp2
-! Range of correction coef: (0, 2)
-    ps_d = ps*fq_ps_d + (fq_ps+1._sp)*ps_d
-    ps = (1._sp+fq_ps)*ps
+    IF (pn .GT. (1._sp+fq_ps)*ps) THEN
+      ps_d = ps*fq_ps_d + (fq_ps+1._sp)*ps_d
+      ps = (1._sp+fq_ps)*ps
+    ELSE
+      ps_d = pn_d
+      ps = pn
+    END IF
     temp2 = TANH(en*inv_cp)
     temp1 = TANH(en*inv_cp)
     temp0 = hp*cp*(-hp+2._sp)
@@ -13325,14 +13779,21 @@ CONTAINS
 &     1.0-TANH(en*inv_cp)**2)*(inv_cp*en_d+en*inv_cp_d)-temp2*hp_d))/((&
 &     1._sp-hp)*temp2+1._sp)
     es = temp
-! Range of correction coef: (0, 2)
-    es_d = es*fq_es_d + (fq_es+1._sp)*es_d
-    es = (1._sp+fq_es)*es
+    IF (en .GT. (1._sp+fq_es)*es) THEN
+      es_d = es*fq_es_d + (fq_es+1._sp)*es_d
+      es = (1._sp+fq_es)*es
+    ELSE
+      es_d = en_d
+      es = en
+    END IF
+! no evaporation over impervious part of a cell
+    es_d = (1._sp-imperviousness)*es_d
+    es = (1._sp-imperviousness)*es
     hp_imd_d = hp_d + inv_cp*(ps_d-es_d) + (ps-es)*inv_cp_d
     hp_imd = hp + (ps-es)*inv_cp
     IF (pn .GT. 0) THEN
-      pr_d = pn_d - cp*(hp_imd_d-hp_d) - (hp_imd-hp)*cp_d
-      pr = pn - (hp_imd-hp)*cp
+      pr_d = pn_d - ps_d
+      pr = pn - ps
     ELSE
       pr_d = 0.0_4
     END IF
@@ -13351,17 +13812,19 @@ CONTAINS
 !                pr
 !   with respect to varying inputs: fq_ps hp en fq_es cp pn
   SUBROUTINE GR_PRODUCTION_B(fq_ps, fq_ps_b, fq_es, fq_es_b, pn, pn_b, &
-&   en, en_b, cp, cp_b, beta, hp, hp_b, pr, pr_b, perc, perc_b)
+&   en, en_b, imperviousness, cp, cp_b, beta, hp, hp_b, pr, pr_b, perc, &
+&   perc_b, ps, es)
     IMPLICIT NONE
-    REAL(sp), INTENT(IN) :: fq_ps, fq_es, pn, en, cp, beta
-    REAL(sp) :: fq_ps_b, fq_es_b, pn_b, en_b, cp_b
-    REAL(sp), INTENT(INOUT) :: hp
-    REAL(sp), INTENT(INOUT) :: hp_b
-    REAL(sp) :: pr, perc
+    REAL(sp), INTENT(IN) :: fq_ps, fq_es, en, imperviousness, cp, beta
+    REAL(sp) :: fq_ps_b, fq_es_b, en_b, cp_b
+    REAL(sp), INTENT(INOUT) :: pn, hp
+    REAL(sp), INTENT(INOUT) :: pn_b, hp_b
+    REAL(sp) :: pr, perc, ps, es
     REAL(sp) :: pr_b, perc_b
-    REAL(sp) :: inv_cp, ps, es, hp_imd
-    REAL(sp) :: inv_cp_b, ps_b, es_b, hp_imd_b
+    REAL(sp) :: inv_cp, hp_imd
+    REAL(sp) :: inv_cp_b, hp_imd_b
     INTRINSIC TANH
+    INTRINSIC MIN
     REAL(sp) :: pwx1
     REAL(sp) :: pwx1_b
     REAL(sp) :: pwr1
@@ -13380,16 +13843,32 @@ CONTAINS
     REAL(sp) :: temp_b4
     REAL(sp) :: temp_b5
     INTEGER :: branch
+    REAL(sp) :: ps_b
+    REAL(sp) :: es_b
     inv_cp = 1._sp/cp
+! impervious area percentage at cell scale applied to neutralized rainfall - no infiltration for imperviousness*pn
+    pn = (1._sp-imperviousness)*pn
     ps = cp*(1._sp-hp*hp)*TANH(pn*inv_cp)/(1._sp+hp*TANH(pn*inv_cp))
-! Range of correction coef: (0, 2)
-    CALL PUSHREAL4(ps)
-    ps = (1._sp+fq_ps)*ps
+    IF (pn .GT. (1._sp+fq_ps)*ps) THEN
+      CALL PUSHREAL4(ps)
+      ps = (1._sp+fq_ps)*ps
+      CALL PUSHCONTROL1B(0)
+    ELSE
+      ps = pn
+      CALL PUSHCONTROL1B(1)
+    END IF
     es = hp*cp*(2._sp-hp)*TANH(en*inv_cp)/(1._sp+(1._sp-hp)*TANH(en*&
 &     inv_cp))
-! Range of correction coef: (0, 2)
-    CALL PUSHREAL4(es)
-    es = (1._sp+fq_es)*es
+    IF (en .GT. (1._sp+fq_es)*es) THEN
+      CALL PUSHREAL4(es)
+      es = (1._sp+fq_es)*es
+      CALL PUSHCONTROL1B(0)
+    ELSE
+      es = en
+      CALL PUSHCONTROL1B(1)
+    END IF
+! no evaporation over impervious part of a cell
+    es = (1._sp-imperviousness)*es
     hp_imd = hp + (ps-es)*inv_cp
     IF (pn .GT. 0) THEN
       CALL PUSHCONTROL1B(0)
@@ -13414,34 +13893,46 @@ CONTAINS
     CALL POPCONTROL1B(branch)
     IF (branch .EQ. 0) THEN
       pn_b = pn_b + pr_b
-      hp_imd_b = hp_imd_b - cp*pr_b
-      hp_b = cp*pr_b
-      cp_b = cp_b - (hp_imd-hp)*pr_b
+      ps_b = -pr_b
     ELSE
-      hp_b = 0.0_4
+      ps_b = 0.0_4
     END IF
+    hp_b = hp_imd_b
+    ps_b = ps_b + inv_cp*hp_imd_b
     es_b = -(inv_cp*hp_imd_b)
     inv_cp_b = inv_cp_b + (ps-es)*hp_imd_b
-    CALL POPREAL4(es)
-    fq_es_b = fq_es_b + es*es_b
-    es_b = (fq_es+1._sp)*es_b
+    es_b = (1._sp-imperviousness)*es_b
+    CALL POPCONTROL1B(branch)
+    IF (branch .EQ. 0) THEN
+      CALL POPREAL4(es)
+      fq_es_b = fq_es_b + es*es_b
+      es_b = (fq_es+1._sp)*es_b
+    ELSE
+      en_b = en_b + es_b
+      es_b = 0.0_4
+    END IF
     temp4 = TANH(en*inv_cp)
     temp3 = (-hp+1._sp)*temp4 + 1._sp
     temp1 = TANH(en*inv_cp)
     temp0 = hp*cp*(-hp+2._sp)
     temp_b3 = es_b/temp3
     temp_b = (2._sp-hp)*temp1*temp_b3
-    temp_b0 = -(temp0*temp1*temp_b3/temp3)
-    hp_b = hp_b + hp_imd_b + cp*temp_b - hp*cp*temp1*temp_b3 - temp4*&
-&     temp_b0
-    ps_b = inv_cp*hp_imd_b
     temp_b4 = (1.0-TANH(en*inv_cp)**2)*temp0*temp_b3
+    temp_b0 = -(temp0*temp1*temp_b3/temp3)
+    hp_b = hp_b + cp*temp_b - hp*cp*temp1*temp_b3 - temp4*temp_b0
     temp_b5 = (1.0-TANH(en*inv_cp)**2)*(1._sp-hp)*temp_b0
     en_b = en_b + inv_cp*temp_b5 + inv_cp*temp_b4
+    inv_cp_b = inv_cp_b + en*temp_b5 + en*temp_b4
     cp_b = cp_b + hp*temp_b
-    CALL POPREAL4(ps)
-    fq_ps_b = fq_ps_b + ps*ps_b
-    ps_b = (fq_ps+1._sp)*ps_b
+    CALL POPCONTROL1B(branch)
+    IF (branch .EQ. 0) THEN
+      CALL POPREAL4(ps)
+      fq_ps_b = fq_ps_b + ps*ps_b
+      ps_b = (fq_ps+1._sp)*ps_b
+    ELSE
+      pn_b = pn_b + ps_b
+      ps_b = 0.0_4
+    END IF
     temp = TANH(pn*inv_cp)
     temp0 = hp*temp + 1._sp
     temp1 = TANH(pn*inv_cp)
@@ -13451,32 +13942,44 @@ CONTAINS
     temp_b1 = -(temp2*temp1*temp_b/temp0)
     hp_b = hp_b + temp*temp_b1 - 2*hp*cp*temp1*temp_b
     temp_b2 = (1.0-TANH(pn*inv_cp)**2)*hp*temp_b1
-    inv_cp_b = inv_cp_b + en*temp_b5 + en*temp_b4 + pn*temp_b2 + pn*&
-&     temp_b0
-    cp_b = cp_b + (1._sp-hp**2)*temp1*temp_b - inv_cp_b/cp**2
     pn_b = pn_b + inv_cp*temp_b2 + inv_cp*temp_b0
+    inv_cp_b = inv_cp_b + pn*temp_b2 + pn*temp_b0
+    cp_b = cp_b + (1._sp-hp**2)*temp1*temp_b - inv_cp_b/cp**2
+    pn_b = (1._sp-imperviousness)*pn_b
   END SUBROUTINE GR_PRODUCTION_B
 
-  SUBROUTINE GR_PRODUCTION(fq_ps, fq_es, pn, en, cp, beta, hp, pr, perc)
+  SUBROUTINE GR_PRODUCTION(fq_ps, fq_es, pn, en, imperviousness, cp, &
+&   beta, hp, pr, perc, ps, es)
     IMPLICIT NONE
-    REAL(sp), INTENT(IN) :: fq_ps, fq_es, pn, en, cp, beta
-    REAL(sp), INTENT(INOUT) :: hp
-    REAL(sp), INTENT(OUT) :: pr, perc
-    REAL(sp) :: inv_cp, ps, es, hp_imd
+    REAL(sp), INTENT(IN) :: fq_ps, fq_es, en, imperviousness, cp, beta
+    REAL(sp), INTENT(INOUT) :: pn, hp
+    REAL(sp), INTENT(OUT) :: pr, perc, ps, es
+    REAL(sp) :: inv_cp, hp_imd
     INTRINSIC TANH
+    INTRINSIC MIN
     REAL(sp) :: pwx1
     REAL(sp) :: pwr1
     inv_cp = 1._sp/cp
     pr = 0._sp
+! impervious area percentage at cell scale applied to neutralized rainfall - no infiltration for imperviousness*pn
+    pn = (1._sp-imperviousness)*pn
     ps = cp*(1._sp-hp*hp)*TANH(pn*inv_cp)/(1._sp+hp*TANH(pn*inv_cp))
-! Range of correction coef: (0, 2)
-    ps = (1._sp+fq_ps)*ps
+    IF (pn .GT. (1._sp+fq_ps)*ps) THEN
+      ps = (1._sp+fq_ps)*ps
+    ELSE
+      ps = pn
+    END IF
     es = hp*cp*(2._sp-hp)*TANH(en*inv_cp)/(1._sp+(1._sp-hp)*TANH(en*&
 &     inv_cp))
-! Range of correction coef: (0, 2)
-    es = (1._sp+fq_es)*es
+    IF (en .GT. (1._sp+fq_es)*es) THEN
+      es = (1._sp+fq_es)*es
+    ELSE
+      es = en
+    END IF
+! no evaporation over impervious part of a cell
+    es = (1._sp-imperviousness)*es
     hp_imd = hp + (ps-es)*inv_cp
-    IF (pn .GT. 0) pr = pn - (hp_imd-hp)*cp
+    IF (pn .GT. 0) pr = pn - ps
     pwx1 = 1._sp + (hp_imd/beta)**4
     pwr1 = pwx1**(-0.25_sp)
     perc = hp_imd*cp*(1._sp-pwr1)
@@ -13484,20 +13987,21 @@ CONTAINS
   END SUBROUTINE GR_PRODUCTION
 
 !  Differentiation of gr_ri_production in forward (tangent) mode (with options fixinterface noISIZE context):
-!   variations   of useful results: hp perc pr
+!   variations   of useful results: hp pn perc pr
 !   with respect to varying inputs: alpha1 hp en cp pn
-  SUBROUTINE GR_RI_PRODUCTION_D(pn, pn_d, en, en_d, cp, cp_d, beta, &
-&   alpha1, alpha1_d, hp, hp_d, pr, pr_d, perc, perc_d, dt)
+  SUBROUTINE GR_RI_PRODUCTION_D(pn, pn_d, en, en_d, imperviousness, cp, &
+&   cp_d, beta, alpha1, alpha1_d, hp, hp_d, pr, pr_d, perc, perc_d, ps, &
+&   es, dt)
     IMPLICIT NONE
-    REAL(sp), INTENT(IN) :: pn, en, cp, beta, alpha1
-    REAL(sp), INTENT(IN) :: pn_d, en_d, cp_d, alpha1_d
+    REAL(sp), INTENT(IN) :: en, imperviousness, cp, beta, alpha1
+    REAL(sp), INTENT(IN) :: en_d, cp_d, alpha1_d
     REAL(sp), INTENT(IN) :: dt
-    REAL(sp), INTENT(INOUT) :: hp
-    REAL(sp), INTENT(INOUT) :: hp_d
-    REAL(sp), INTENT(OUT) :: pr, perc
+    REAL(sp), INTENT(INOUT) :: pn, hp
+    REAL(sp), INTENT(INOUT) :: pn_d, hp_d
+    REAL(sp), INTENT(OUT) :: pr, perc, ps, es
     REAL(sp), INTENT(OUT) :: pr_d, perc_d
-    REAL(sp) :: inv_cp, ps, es, hp_imd
-    REAL(sp) :: inv_cp_d, ps_d, es_d, hp_imd_d
+    REAL(sp) :: inv_cp, hp_imd
+    REAL(sp) :: inv_cp_d, hp_imd_d
     REAL(sp) :: lambda, gam, inv_lambda
     REAL(sp) :: lambda_d, gam_d, inv_lambda_d
     INTRINSIC EXP
@@ -13517,6 +14021,8 @@ CONTAINS
     REAL(sp) :: temp2
     REAL(sp) :: temp3
     REAL(sp) :: temp4
+    REAL(sp) :: ps_d
+    REAL(sp) :: es_d
     inv_cp_d = -(cp_d/cp**2)
     inv_cp = 1._sp/cp
     pr = 0._sp
@@ -13531,6 +14037,9 @@ CONTAINS
     lambda = temp
     inv_lambda_d = -(lambda_d/lambda**2)
     inv_lambda = 1._sp/lambda
+! impervious area percentage at cell scale applied to neutralized rainfall - no infiltration for imperviousness*pn
+    pn_d = (1._sp-imperviousness)*pn_d
+    pn = (1._sp-imperviousness)*pn
     arg1_d = inv_cp*(pn*lambda_d+lambda*pn_d) + lambda*pn*inv_cp_d
     arg1 = lambda*pn*inv_cp
     arg2_d = inv_cp*(pn*lambda_d+lambda*pn_d) + lambda*pn*inv_cp_d
@@ -13555,6 +14064,9 @@ CONTAINS
 &     1.0-TANH(en*inv_cp)**2)*(inv_cp*en_d+en*inv_cp_d)-temp4*hp_d))/((&
 &     1._sp-hp)*temp4+1._sp)
     es = temp1
+! no evaporation over impervious part of a cell
+    es_d = (1._sp-imperviousness)*es_d
+    es = (1._sp-imperviousness)*es
     hp_imd_d = hp_d + inv_cp*(ps_d-es_d) + (ps-es)*inv_cp_d
     hp_imd = hp + (ps-es)*inv_cp
     IF (pn .GT. 0) THEN
@@ -13576,18 +14088,19 @@ CONTAINS
 !  Differentiation of gr_ri_production in reverse (adjoint) mode (with options fixinterface noISIZE context):
 !   gradient     of useful results: alpha1 hp cp pn perc pr
 !   with respect to varying inputs: alpha1 hp en cp pn
-  SUBROUTINE GR_RI_PRODUCTION_B(pn, pn_b, en, en_b, cp, cp_b, beta, &
-&   alpha1, alpha1_b, hp, hp_b, pr, pr_b, perc, perc_b, dt)
+  SUBROUTINE GR_RI_PRODUCTION_B(pn, pn_b, en, en_b, imperviousness, cp, &
+&   cp_b, beta, alpha1, alpha1_b, hp, hp_b, pr, pr_b, perc, perc_b, ps, &
+&   es, dt)
     IMPLICIT NONE
-    REAL(sp), INTENT(IN) :: pn, en, cp, beta, alpha1
-    REAL(sp) :: pn_b, en_b, cp_b, alpha1_b
+    REAL(sp), INTENT(IN) :: en, imperviousness, cp, beta, alpha1
+    REAL(sp) :: en_b, cp_b, alpha1_b
     REAL(sp), INTENT(IN) :: dt
-    REAL(sp), INTENT(INOUT) :: hp
-    REAL(sp), INTENT(INOUT) :: hp_b
-    REAL(sp) :: pr, perc
+    REAL(sp), INTENT(INOUT) :: pn, hp
+    REAL(sp), INTENT(INOUT) :: pn_b, hp_b
+    REAL(sp) :: pr, perc, ps, es
     REAL(sp) :: pr_b, perc_b
-    REAL(sp) :: inv_cp, ps, es, hp_imd
-    REAL(sp) :: inv_cp_b, ps_b, es_b, hp_imd_b
+    REAL(sp) :: inv_cp, hp_imd
+    REAL(sp) :: inv_cp_b, hp_imd_b
     REAL(sp) :: lambda, gam, inv_lambda
     REAL(sp) :: lambda_b, gam_b, inv_lambda_b
     INTRINSIC EXP
@@ -13615,16 +14128,23 @@ CONTAINS
     REAL(sp) :: temp_b4
     REAL(sp) :: temp_b5
     INTEGER :: branch
+    REAL(sp) :: ps_b
+    REAL(sp) :: es_b
     inv_cp = 1._sp/cp
     gam = 1._sp - EXP(-(pn*alpha1))
     lambda = SQRT(1._sp - gam)
     inv_lambda = 1._sp/lambda
+! impervious area percentage at cell scale applied to neutralized rainfall - no infiltration for imperviousness*pn
+    CALL PUSHREAL4(pn)
+    pn = (1._sp-imperviousness)*pn
     arg1 = lambda*pn*inv_cp
     arg2 = lambda*pn*inv_cp
     ps = cp*inv_lambda*TANH(arg1)*(1._sp-(lambda*hp)**2)/(1._sp+lambda*&
 &     hp*TANH(arg2)) - gam*dt
     es = hp*cp*(2._sp-hp)*TANH(en*inv_cp)/(1._sp+(1._sp-hp)*TANH(en*&
 &     inv_cp))
+! no evaporation over impervious part of a cell
+    es = (1._sp-imperviousness)*es
     hp_imd = hp + (ps-es)*inv_cp
     IF (pn .GT. 0) THEN
       CALL PUSHCONTROL1B(0)
@@ -13656,6 +14176,7 @@ CONTAINS
       hp_b = 0.0_4
     END IF
     es_b = -(inv_cp*hp_imd_b)
+    es_b = (1._sp-imperviousness)*es_b
     temp4 = TANH(en*inv_cp)
     temp3 = (-hp+1._sp)*temp4 + 1._sp
     temp1 = TANH(en*inv_cp)
@@ -13696,20 +14217,21 @@ CONTAINS
       gam_b = -(dt*ps_b) - lambda_b/(2.0*SQRT(1._sp-gam))
     END IF
     hp_b = hp_b + lambda*temp*temp_b3 + lambda*temp_b2
+    pn_b = pn_b + lambda*inv_cp*arg2_b + lambda*inv_cp*arg1_b
+    CALL POPREAL4(pn)
     temp_b = -(EXP(-(pn*alpha1))*gam_b)
-    pn_b = pn_b + lambda*inv_cp*arg2_b + lambda*inv_cp*arg1_b - alpha1*&
-&     temp_b
+    pn_b = (1._sp-imperviousness)*pn_b - alpha1*temp_b
     alpha1_b = alpha1_b - pn*temp_b
   END SUBROUTINE GR_RI_PRODUCTION_B
 
-  SUBROUTINE GR_RI_PRODUCTION(pn, en, cp, beta, alpha1, hp, pr, perc, dt&
-& )
+  SUBROUTINE GR_RI_PRODUCTION(pn, en, imperviousness, cp, beta, alpha1, &
+&   hp, pr, perc, ps, es, dt)
     IMPLICIT NONE
-    REAL(sp), INTENT(IN) :: pn, en, cp, beta, alpha1
+    REAL(sp), INTENT(IN) :: en, imperviousness, cp, beta, alpha1
     REAL(sp), INTENT(IN) :: dt
-    REAL(sp), INTENT(INOUT) :: hp
-    REAL(sp), INTENT(OUT) :: pr, perc
-    REAL(sp) :: inv_cp, ps, es, hp_imd
+    REAL(sp), INTENT(INOUT) :: pn, hp
+    REAL(sp), INTENT(OUT) :: pr, perc, ps, es
+    REAL(sp) :: inv_cp, hp_imd
     REAL(sp) :: lambda, gam, inv_lambda
     INTRINSIC EXP
     INTRINSIC SQRT
@@ -13723,12 +14245,16 @@ CONTAINS
     gam = 1._sp - EXP(-(pn*alpha1))
     lambda = SQRT(1._sp - gam)
     inv_lambda = 1._sp/lambda
+! impervious area percentage at cell scale applied to neutralized rainfall - no infiltration for imperviousness*pn
+    pn = (1._sp-imperviousness)*pn
     arg1 = lambda*pn*inv_cp
     arg2 = lambda*pn*inv_cp
     ps = cp*inv_lambda*TANH(arg1)*(1._sp-(lambda*hp)**2)/(1._sp+lambda*&
 &     hp*TANH(arg2)) - gam*dt
     es = hp*cp*(2._sp-hp)*TANH(en*inv_cp)/(1._sp+(1._sp-hp)*TANH(en*&
 &     inv_cp))
+! no evaporation over impervious part of a cell
+    es = (1._sp-imperviousness)*es
     hp_imd = hp + (ps-es)*inv_cp
     IF (pn .GT. 0) pr = pn - (hp_imd-hp)*cp
     pwx1 = 1._sp + (hp_imd/beta)**4
@@ -14246,23 +14772,24 @@ CONTAINS
   END SUBROUTINE GR_EXPONENTIAL_TRANSFER
 
 !  Differentiation of gr_production_transfer_ode in forward (tangent) mode (with options fixinterface noISIZE context):
-!   variations   of useful results: q hp ht
+!   variations   of useful results: q hp ht pn
 !   with respect to varying inputs: kexc hp ht en cp pn ct
-  SUBROUTINE GR_PRODUCTION_TRANSFER_ODE_D(pn, pn_d, en, en_d, cp, cp_d, &
-&   ct, ct_d, kexc, kexc_d, hp, hp_d, ht, ht_d, q, q_d, l)
+  SUBROUTINE GR_PRODUCTION_TRANSFER_ODE_D(pn, pn_d, en, en_d, &
+&   imperviousness, cp, cp_d, ct, ct_d, kexc, kexc_d, hp, hp_d, ht, ht_d&
+&   , q, q_d, l)
     IMPLICIT NONE
-    REAL(sp), INTENT(IN) :: pn, en, cp, ct, kexc
-    REAL(sp), INTENT(IN) :: pn_d, en_d, cp_d, ct_d, kexc_d
-    REAL(sp), INTENT(INOUT) :: hp, ht, q
-    REAL(sp), INTENT(INOUT) :: hp_d, ht_d, q_d
+    REAL(sp), INTENT(IN) :: en, imperviousness, cp, ct, kexc
+    REAL(sp), INTENT(IN) :: en_d, cp_d, ct_d, kexc_d
+    REAL(sp), INTENT(INOUT) :: pn, hp, ht, q
+    REAL(sp), INTENT(INOUT) :: pn_d, hp_d, ht_d, q_d
     REAL(sp), INTENT(OUT) :: l
     REAL(sp) :: l_d
     REAL(sp), DIMENSION(2, 2) :: jacob
     REAL(sp), DIMENSION(2, 2) :: jacob_d
     REAL(sp), DIMENSION(2) :: dh, delta_h
     REAL(sp), DIMENSION(2) :: dh_d, delta_h_d
-    REAL(sp) :: inv_cp, hp0, ht0, dt, fhp, fht, tmp_j
-    REAL(sp) :: inv_cp_d, hp0_d, ht0_d, fhp_d, fht_d, tmp_j_d
+    REAL(sp) :: inv_cp, inv_ct, hp0, ht0, dt, fhp, fht
+    REAL(sp) :: inv_cp_d, inv_ct_d, hp0_d, ht0_d, fhp_d, fht_d
     LOGICAL :: converged
     INTEGER :: j
     INTEGER, SAVE :: maxiter=10
@@ -14271,12 +14798,15 @@ CONTAINS
     REAL(sp) :: result1
     REAL(sp) :: temp
     REAL(sp) :: temp0
-! integer :: n_subtimesteps = 2
+    REAL(sp) :: temp1
     inv_cp_d = -(cp_d/cp**2)
     inv_cp = 1._sp/cp
-! dt = 1._sp/real(n_subtimesteps, sp)
+    inv_ct_d = -(ct_d/ct**2)
+    inv_ct = 1._sp/ct
+! impervious area percentage at cell scale applied to neutralized rainfall - no infiltration for imperviousness*pn
+    pn_d = (1._sp-imperviousness)*pn_d
+    pn = (1._sp-imperviousness)*pn
     dt = 1._sp
-! do i = 1, n_subtimesteps
     hp0_d = hp_d
     hp0 = hp
     ht0_d = ht_d
@@ -14287,35 +14817,41 @@ CONTAINS
     delta_h_d = 0.0_4
     jacob_d = 0.0_4
     DO WHILE (.NOT.converged .AND. j .LT. maxiter)
-      fhp_d = (1._sp-hp**2)*pn_d - (pn*2*hp-hp*en)*hp_d - (2._sp-hp)*(en&
-&       *hp_d+hp*en_d)
-      fhp = (1._sp-hp**2)*pn - hp*(2._sp-hp)*en
-      dh_d(1) = hp_d - hp0_d - dt*(inv_cp*fhp_d+fhp*inv_cp_d)
-      dh(1) = hp - hp0 - dt*fhp*inv_cp
+      temp = (-(hp*hp)+1._sp)*pn - (-hp+2._sp)*hp*en
+      fhp_d = inv_cp*((1._sp-hp**2)*pn_d-(pn*2*hp-hp*en)*hp_d-(2._sp-hp)&
+&       *(en*hp_d+hp*en_d)) + temp*inv_cp_d
+      fhp = temp*inv_cp
+      dh_d(1) = hp_d - hp0_d - dt*fhp_d
+      dh(1) = hp - hp0 - dt*fhp
       temp = ht**5
       temp0 = ht**3.5_sp
-      fht_d = temp*ct_d + (ct*5*ht**4-kexc*3.5_sp*ht**2.5)*ht_d - 0.9_sp&
-&       *(hp**2*pn_d+pn*2*hp*hp_d) - temp0*kexc_d
-      fht = ct*temp - 0.9_sp*(pn*(hp*hp)) - kexc*temp0
-! fht here is -fht
-      dh_d(2) = ht_d - ht0_d + dt*(fht_d-fht*ct_d/ct)/ct
-      dh(2) = ht - ht0 + dt*fht/ct
-      temp0 = hp*(pn-en) + en
+      temp1 = 0.9_sp*pn*(hp*hp) - 0.25_sp*ct*temp + kexc*temp0
+      fht_d = inv_ct*(0.9_sp*(hp**2*pn_d+pn*2*hp*hp_d)-0.25_sp*(temp*&
+&       ct_d+ct*5*ht**4*ht_d)+temp0*kexc_d+kexc*3.5_sp*ht**2.5*ht_d) + &
+&       temp1*inv_ct_d
+      fht = temp1*inv_ct
+      dh_d(2) = ht_d - ht0_d - dt*fht_d
+      dh(2) = ht - ht0 - dt*fht
+! 1 - dt*nabla_hp(fhp)
+      temp1 = hp*(pn-en) + en
       jacob_d(1, 1) = dt*2._sp*(inv_cp*((pn-en)*hp_d+hp*(pn_d-en_d)+en_d&
-&       )+temp0*inv_cp_d)
-      jacob(1, 1) = dt*2._sp*(temp0*inv_cp) + 1._sp
+&       )+temp1*inv_cp_d)
+      jacob(1, 1) = dt*2._sp*(temp1*inv_cp) + 1._sp
+! -dt*nabla_ht(fhp)
       jacob_d(1, 2) = 0.0_4
       jacob(1, 2) = 0._sp
-      temp0 = pn*hp/ct
-      jacob_d(2, 1) = dt*1.8_sp*(hp*pn_d+pn*hp_d-temp0*ct_d)/ct
-      jacob(2, 1) = dt*1.8_sp*temp0
-      temp0 = kexc/ct
-      temp = ht**2.5_sp
-      tmp_j_d = 5._sp*4*ht**3*ht_d - 3.5_sp*(temp0*2.5_sp*ht**1.5*ht_d+&
-&       temp*(kexc_d-temp0*ct_d)/ct)
-      tmp_j = 5._sp*ht**4 - 3.5_sp*(temp*temp0)
-      jacob_d(2, 2) = dt*tmp_j_d
-      jacob(2, 2) = 1._sp + dt*tmp_j
+! -dt*nabla_hp(fht)
+      jacob_d(2, 1) = -(dt*1.8_sp*(inv_ct*(hp*pn_d+pn*hp_d)+pn*hp*&
+&       inv_ct_d))
+      jacob(2, 1) = -(dt*1.8_sp*pn*hp*inv_ct)
+! 1 - dt*nabla_ht(fht)
+      temp1 = ht**2.5_sp
+      temp0 = ht**4
+      temp = 3.5_sp*kexc*temp1 - 1.25_sp*ct*temp0
+      jacob_d(2, 2) = -(dt*(inv_ct*(3.5_sp*(temp1*kexc_d+kexc*2.5_sp*ht&
+&       **1.5*ht_d)-1.25_sp*(temp0*ct_d+ct*4*ht**3*ht_d))+temp*inv_ct_d)&
+&       )
+      jacob(2, 2) = 1._sp - dt*(temp*inv_ct)
       CALL SOLVE_LINEAR_SYSTEM_2VARS_D(jacob, jacob_d, delta_h, &
 &                                delta_h_d, dh, dh_d)
       hp_d = hp_d + delta_h_d(1)
@@ -14343,73 +14879,79 @@ CONTAINS
       converged = result1 .LT. 1.e-6_sp
       j = j + 1
     END DO
-! end do
-    temp0 = ht**3.5_sp
-    l_d = temp0*kexc_d + kexc*3.5_sp*ht**2.5*ht_d
-    l = kexc*temp0
-    temp0 = ht**5
-    q_d = temp0*ct_d + ct*5*ht**4*ht_d + 0.1_sp*(hp**2*pn_d+pn*2*hp*hp_d&
-&     ) + l_d
-    q = ct*temp0 + 0.1_sp*(pn*(hp*hp)) + l
+    temp1 = ht**3.5_sp
+    l_d = temp1*kexc_d + kexc*3.5_sp*ht**2.5*ht_d
+    l = kexc*temp1
+    temp1 = ht**5
+    q_d = 0.25_sp*(temp1*ct_d+ct*5*ht**4*ht_d) + 0.1_sp*(hp**2*pn_d+pn*2&
+&     *hp*hp_d) + l_d
+    q = 0.25_sp*(ct*temp1) + 0.1_sp*(pn*(hp*hp)) + l
   END SUBROUTINE GR_PRODUCTION_TRANSFER_ODE_D
 
 !  Differentiation of gr_production_transfer_ode in reverse (adjoint) mode (with options fixinterface noISIZE context):
 !   gradient     of useful results: q kexc hp ht en cp pn ct
 !   with respect to varying inputs: kexc hp ht en cp pn ct
-  SUBROUTINE GR_PRODUCTION_TRANSFER_ODE_B(pn, pn_b, en, en_b, cp, cp_b, &
-&   ct, ct_b, kexc, kexc_b, hp, hp_b, ht, ht_b, q, q_b, l)
+  SUBROUTINE GR_PRODUCTION_TRANSFER_ODE_B(pn, pn_b, en, en_b, &
+&   imperviousness, cp, cp_b, ct, ct_b, kexc, kexc_b, hp, hp_b, ht, ht_b&
+&   , q, q_b, l)
     IMPLICIT NONE
-    REAL(sp), INTENT(IN) :: pn, en, cp, ct, kexc
-    REAL(sp) :: pn_b, en_b, cp_b, ct_b, kexc_b
-    REAL(sp), INTENT(INOUT) :: hp, ht, q
-    REAL(sp), INTENT(INOUT) :: hp_b, ht_b, q_b
+    REAL(sp), INTENT(IN) :: en, imperviousness, cp, ct, kexc
+    REAL(sp) :: en_b, cp_b, ct_b, kexc_b
+    REAL(sp), INTENT(INOUT) :: pn, hp, ht, q
+    REAL(sp), INTENT(INOUT) :: pn_b, hp_b, ht_b, q_b
     REAL(sp) :: l
     REAL(sp), DIMENSION(2, 2) :: jacob
     REAL(sp), DIMENSION(2, 2) :: jacob_b
     REAL(sp), DIMENSION(2) :: dh, delta_h
     REAL(sp), DIMENSION(2) :: dh_b, delta_h_b
-    REAL(sp) :: inv_cp, hp0, ht0, dt, fhp, fht, tmp_j
-    REAL(sp) :: inv_cp_b, hp0_b, ht0_b, fhp_b, fht_b, tmp_j_b
+    REAL(sp) :: inv_cp, inv_ct, hp0, ht0, dt, fhp, fht
+    REAL(sp) :: inv_cp_b, inv_ct_b, hp0_b, ht0_b, fhp_b, fht_b
     LOGICAL :: converged
     INTEGER :: j
     INTEGER, SAVE :: maxiter=10
     INTRINSIC SQRT
     REAL(sp) :: arg1
     REAL(sp) :: result1
+    REAL(sp) :: temp
     REAL(sp) :: temp_b
+    REAL(sp) :: temp0
+    REAL(sp) :: temp1
     REAL(sp) :: temp_b0
+    REAL(sp) :: temp_b1
     INTEGER :: branch
     INTEGER :: ad_count
     INTEGER :: i
     REAL(sp) :: l_b
-! integer :: n_subtimesteps = 2
     inv_cp = 1._sp/cp
-! dt = 1._sp/real(n_subtimesteps, sp)
+    inv_ct = 1._sp/ct
+! impervious area percentage at cell scale applied to neutralized rainfall - no infiltration for imperviousness*pn
+    pn = (1._sp-imperviousness)*pn
     dt = 1._sp
-! do i = 1, n_subtimesteps
     hp0 = hp
     ht0 = ht
     converged = .false.
     j = 0
     ad_count = 0
     DO WHILE (.NOT.converged .AND. j .LT. maxiter)
-      fhp = (1._sp-hp**2)*pn - hp*(2._sp-hp)*en
+      fhp = ((1._sp-hp**2)*pn-hp*(2._sp-hp)*en)*inv_cp
       CALL PUSHREAL4(dh(1))
-      dh(1) = hp - hp0 - dt*fhp*inv_cp
-      CALL PUSHREAL4(fht)
-      fht = ct*ht**5 - 0.9_sp*pn*hp**2 - kexc*ht**3.5_sp
-! fht here is -fht
+      dh(1) = hp - hp0 - dt*fhp
+      fht = (0.9_sp*pn*hp**2-0.25_sp*ct*ht**5+kexc*ht**3.5_sp)*inv_ct
       CALL PUSHREAL4(dh(2))
-      dh(2) = ht - ht0 + dt*fht/ct
+      dh(2) = ht - ht0 - dt*fht
+! 1 - dt*nabla_hp(fhp)
       CALL PUSHREAL4(jacob(1, 1))
       jacob(1, 1) = 1._sp + dt*2._sp*(hp*(pn-en)+en)*inv_cp
+! -dt*nabla_ht(fhp)
       CALL PUSHREAL4(jacob(1, 2))
       jacob(1, 2) = 0._sp
+! -dt*nabla_hp(fht)
       CALL PUSHREAL4(jacob(2, 1))
-      jacob(2, 1) = dt*1.8_sp*pn*hp/ct
-      tmp_j = 5._sp*ht**4 - 3.5_sp*kexc*ht**2.5_sp/ct
+      jacob(2, 1) = -(dt*1.8_sp*pn*hp*inv_ct)
+! 1 - dt*nabla_ht(fht)
       CALL PUSHREAL4(jacob(2, 2))
-      jacob(2, 2) = 1._sp + dt*tmp_j
+      jacob(2, 2) = 1._sp - dt*(3.5_sp*kexc*ht**2.5_sp-1.25_sp*ct*ht**4)&
+&       *inv_ct
       CALL SOLVE_LINEAR_SYSTEM_2VARS(jacob, delta_h, dh)
       CALL PUSHREAL4(hp)
       hp = hp + delta_h(1)
@@ -14447,18 +14989,20 @@ CONTAINS
     END DO
     CALL PUSHINTEGER4(ad_count)
     l_b = q_b
-    ct_b = ct_b + ht**5*q_b
-    ht_b = ht_b + 5*ht**4*ct*q_b + 3.5_sp*ht**2.5*kexc*l_b
+    ct_b = ct_b + ht**5*0.25_sp*q_b
+    ht_b = ht_b + 5*ht**4*ct*0.25_sp*q_b + 3.5_sp*ht**2.5*kexc*l_b
     pn_b = pn_b + hp**2*0.1_sp*q_b
     hp_b = hp_b + 2*hp*pn*0.1_sp*q_b
     kexc_b = kexc_b + ht**3.5_sp*l_b
     dt = 1._sp
     inv_cp = 1._sp/cp
+    inv_ct = 1._sp/ct
     dh_b = 0.0_4
     delta_h_b = 0.0_4
     jacob_b = 0.0_4
     hp0_b = 0.0_4
     inv_cp_b = 0.0_4
+    inv_ct_b = 0.0_4
     ht0_b = 0.0_4
     CALL POPINTEGER4(ad_count)
     DO i=1,ad_count
@@ -14477,85 +15021,95 @@ CONTAINS
       CALL SOLVE_LINEAR_SYSTEM_2VARS_B(jacob, jacob_b, delta_h, &
 &                                delta_h_b, dh, dh_b)
       CALL POPREAL4(jacob(2, 2))
-      tmp_j_b = dt*jacob_b(2, 2)
+      temp0 = ht**2.5_sp
+      temp = ht**4
+      temp_b0 = -(inv_ct*dt*jacob_b(2, 2))
+      inv_ct_b = inv_ct_b - (3.5_sp*(kexc*temp0)-1.25_sp*(ct*temp))*dt*&
+&       jacob_b(2, 2)
       jacob_b(2, 2) = 0.0_4
-      temp_b0 = -(ht**2.5_sp*3.5_sp*tmp_j_b/ct)
-      kexc_b = kexc_b + temp_b0
-      ct_b = ct_b - kexc*temp_b0/ct
       CALL POPREAL4(jacob(2, 1))
-      temp_b0 = dt*1.8_sp*jacob_b(2, 1)/ct
-      jacob_b(2, 1) = 0.0_4
-      pn_b = pn_b + hp*temp_b0
-      hp_b = hp_b + pn*temp_b0
-      ct_b = ct_b - pn*hp*temp_b0/ct
       CALL POPREAL4(jacob(1, 2))
       jacob_b(1, 2) = 0.0_4
       CALL POPREAL4(jacob(1, 1))
-      temp_b = dt*2._sp*jacob_b(1, 1)
-      jacob_b(1, 1) = 0.0_4
-      temp_b0 = inv_cp*temp_b
       CALL POPREAL4(dh(2))
       ht0_b = ht0_b - dh_b(2)
-      fhp = (1._sp-hp**2)*pn - hp*(2._sp-hp)*en
-      inv_cp_b = inv_cp_b + (hp*(pn-en)+en)*temp_b - fhp*dt*dh_b(1)
-      temp_b = dt*dh_b(2)/ct
-      fht_b = temp_b
-      ht_b = ht_b + (4*ht**3*5._sp-2.5_sp*ht**1.5*kexc*3.5_sp/ct)*&
-&       tmp_j_b + dh_b(2) + (5*ht**4*ct-3.5_sp*ht**2.5*kexc)*fht_b
+      fht_b = -(dt*dh_b(2))
+      temp1 = ht**3.5_sp
+      temp_b = inv_ct*fht_b
+      kexc_b = kexc_b + temp0*3.5_sp*temp_b0 + temp1*temp_b
+      ht_b = ht_b + (2.5_sp*ht**1.5*kexc*3.5_sp-4*ht**3*ct*1.25_sp)*&
+&       temp_b0 + dh_b(2) + (3.5_sp*ht**2.5*kexc-5*ht**4*ct*0.25_sp)*&
+&       temp_b
       dh_b(2) = 0.0_4
-      ct_b = ct_b + ht**5*fht_b - fht*temp_b/ct
-      CALL POPREAL4(fht)
-      kexc_b = kexc_b - ht**3.5_sp*fht_b
+      temp0 = ht**5
+      ct_b = ct_b - temp*1.25_sp*temp_b0 - temp0*0.25_sp*temp_b
+      temp_b0 = -(dt*1.8_sp*jacob_b(2, 1))
+      jacob_b(2, 1) = 0.0_4
+      pn_b = pn_b + hp*inv_ct*temp_b0
+      hp_b = hp_b + pn*inv_ct*temp_b0
+      inv_ct_b = inv_ct_b + pn*hp*temp_b0 + (0.9_sp*(pn*hp**2)-0.25_sp*(&
+&       ct*temp0)+kexc*temp1)*fht_b
+      temp_b0 = dt*2._sp*jacob_b(1, 1)
+      jacob_b(1, 1) = 0.0_4
+      temp_b1 = inv_cp*temp_b0
+      hp_b = hp_b + (pn-en)*temp_b1 + 2*hp*pn*0.9_sp*temp_b
+      pn_b = pn_b + hp*temp_b1 + hp**2*0.9_sp*temp_b
       CALL POPREAL4(dh(1))
       hp0_b = hp0_b - dh_b(1)
-      fhp_b = -(inv_cp*dt*dh_b(1))
-      hp_b = hp_b + (pn-en)*temp_b0 + dh_b(1) - 2*hp*pn*0.9_sp*fht_b + (&
-&       hp*en-en*(2._sp-hp)-2*hp*pn)*fhp_b
-      pn_b = pn_b + hp*temp_b0 + (1._sp-hp**2)*fhp_b - hp**2*0.9_sp*&
-&       fht_b
-      en_b = en_b + (1.0-hp)*temp_b0 - hp*(2._sp-hp)*fhp_b
+      fhp_b = -(dt*dh_b(1))
+      inv_cp_b = inv_cp_b + (hp*(pn-en)+en)*temp_b0 + ((1._sp-hp**2)*pn-&
+&       (2._sp-hp)*(hp*en))*fhp_b
+      temp_b = inv_cp*fhp_b
+      en_b = en_b + (1.0-hp)*temp_b1 - hp*(2._sp-hp)*temp_b
+      hp_b = hp_b + dh_b(1) + (hp*en-en*(2._sp-hp)-2*hp*pn)*temp_b
       dh_b(1) = 0.0_4
+      pn_b = pn_b + (1._sp-hp**2)*temp_b
     END DO
     ht_b = ht_b + ht0_b
     hp_b = hp_b + hp0_b
+    pn_b = (1._sp-imperviousness)*pn_b
+    ct_b = ct_b - inv_ct_b/ct**2
     cp_b = cp_b - inv_cp_b/cp**2
   END SUBROUTINE GR_PRODUCTION_TRANSFER_ODE_B
 
-  SUBROUTINE GR_PRODUCTION_TRANSFER_ODE(pn, en, cp, ct, kexc, hp, ht, q&
-&   , l)
+  SUBROUTINE GR_PRODUCTION_TRANSFER_ODE(pn, en, imperviousness, cp, ct, &
+&   kexc, hp, ht, q, l)
     IMPLICIT NONE
-    REAL(sp), INTENT(IN) :: pn, en, cp, ct, kexc
-    REAL(sp), INTENT(INOUT) :: hp, ht, q
+    REAL(sp), INTENT(IN) :: en, imperviousness, cp, ct, kexc
+    REAL(sp), INTENT(INOUT) :: pn, hp, ht, q
     REAL(sp), INTENT(OUT) :: l
     REAL(sp), DIMENSION(2, 2) :: jacob
     REAL(sp), DIMENSION(2) :: dh, delta_h
-    REAL(sp) :: inv_cp, hp0, ht0, dt, fhp, fht, tmp_j
+    REAL(sp) :: inv_cp, inv_ct, hp0, ht0, dt, fhp, fht
     LOGICAL :: converged
     INTEGER :: j
     INTEGER, SAVE :: maxiter=10
     INTRINSIC SQRT
     REAL(sp) :: arg1
     REAL(sp) :: result1
-! integer :: n_subtimesteps = 2
     inv_cp = 1._sp/cp
-! dt = 1._sp/real(n_subtimesteps, sp)
+    inv_ct = 1._sp/ct
+! impervious area percentage at cell scale applied to neutralized rainfall - no infiltration for imperviousness*pn
+    pn = (1._sp-imperviousness)*pn
     dt = 1._sp
-! do i = 1, n_subtimesteps
     hp0 = hp
     ht0 = ht
     converged = .false.
     j = 0
     DO WHILE (.NOT.converged .AND. j .LT. maxiter)
-      fhp = (1._sp-hp**2)*pn - hp*(2._sp-hp)*en
-      dh(1) = hp - hp0 - dt*fhp*inv_cp
-      fht = ct*ht**5 - 0.9_sp*pn*hp**2 - kexc*ht**3.5_sp
-! fht here is -fht
-      dh(2) = ht - ht0 + dt*fht/ct
+      fhp = ((1._sp-hp**2)*pn-hp*(2._sp-hp)*en)*inv_cp
+      dh(1) = hp - hp0 - dt*fhp
+      fht = (0.9_sp*pn*hp**2-0.25_sp*ct*ht**5+kexc*ht**3.5_sp)*inv_ct
+      dh(2) = ht - ht0 - dt*fht
+! 1 - dt*nabla_hp(fhp)
       jacob(1, 1) = 1._sp + dt*2._sp*(hp*(pn-en)+en)*inv_cp
+! -dt*nabla_ht(fhp)
       jacob(1, 2) = 0._sp
-      jacob(2, 1) = dt*1.8_sp*pn*hp/ct
-      tmp_j = 5._sp*ht**4 - 3.5_sp*kexc*ht**2.5_sp/ct
-      jacob(2, 2) = 1._sp + dt*tmp_j
+! -dt*nabla_hp(fht)
+      jacob(2, 1) = -(dt*1.8_sp*pn*hp*inv_ct)
+! 1 - dt*nabla_ht(fht)
+      jacob(2, 2) = 1._sp - dt*(3.5_sp*kexc*ht**2.5_sp-1.25_sp*ct*ht**4)&
+&       *inv_ct
       CALL SOLVE_LINEAR_SYSTEM_2VARS(jacob, delta_h, dh)
       hp = hp + delta_h(1)
       IF (hp .LE. 0._sp) hp = 1.e-6_sp
@@ -14568,250 +15122,541 @@ CONTAINS
       converged = result1 .LT. 1.e-6_sp
       j = j + 1
     END DO
-! end do
     l = kexc*ht**3.5_sp
-    q = ct*ht**5 + 0.1_sp*pn*hp**2 + l
+    q = 0.25_sp*ct*ht**5 + 0.1_sp*pn*hp**2 + l
   END SUBROUTINE GR_PRODUCTION_TRANSFER_ODE
 
 !  Differentiation of gr_production_transfer_ode_mlp in forward (tangent) mode (with options fixinterface noISIZE context):
-!   variations   of useful results: q hp ht
-!   with respect to varying inputs: kexc hp ht en fq cp pn ct
-  SUBROUTINE GR_PRODUCTION_TRANSFER_ODE_MLP_D(fq, fq_d, pn, pn_d, en, &
-&   en_d, cp, cp_d, ct, ct_d, kexc, kexc_d, hp, hp_d, ht, ht_d, q, q_d, &
-&   l)
+!   variations   of useful results: q hp ht pn
+!   with respect to varying inputs: kexc hp ht en jacobian_nn_1
+!                jacobian_nn_2 fq cp pn ct
+  SUBROUTINE GR_PRODUCTION_TRANSFER_ODE_MLP_D(fq, fq_d, jacobian_nn_1, &
+&   jacobian_nn_1_d, jacobian_nn_2, jacobian_nn_2_d, pn, pn_d, en, en_d&
+&   , imperviousness, cp, cp_d, ct, ct_d, kexc, kexc_d, hp, hp_d, ht, &
+&   ht_d, q, q_d, l)
     IMPLICIT NONE
 ! fixed NN output size
-    REAL(sp), DIMENSION(5), INTENT(IN) :: fq
-    REAL(sp), DIMENSION(5), INTENT(IN) :: fq_d
-    REAL(sp), INTENT(IN) :: pn, en, cp, ct, kexc
-    REAL(sp), INTENT(IN) :: pn_d, en_d, cp_d, ct_d, kexc_d
-    REAL(sp), INTENT(INOUT) :: hp, ht, q
-    REAL(sp), INTENT(INOUT) :: hp_d, ht_d, q_d
+    REAL(sp), DIMENSION(4), INTENT(IN) :: fq
+    REAL(sp), DIMENSION(4), INTENT(IN) :: fq_d
+    INTRINSIC SIZE
+! grad wrt hp
+    REAL(sp), DIMENSION(SIZE(fq)), INTENT(IN) :: jacobian_nn_1
+    REAL(sp), DIMENSION(SIZE(fq)), INTENT(IN) :: jacobian_nn_1_d
+! grad wrt ht
+    REAL(sp), DIMENSION(SIZE(fq)), INTENT(IN) :: jacobian_nn_2
+    REAL(sp), DIMENSION(SIZE(fq)), INTENT(IN) :: jacobian_nn_2_d
+    REAL(sp), INTENT(IN) :: en, imperviousness, cp, ct, kexc
+    REAL(sp), INTENT(IN) :: en_d, cp_d, ct_d, kexc_d
+    REAL(sp), INTENT(INOUT) :: pn, hp, ht, q
+    REAL(sp), INTENT(INOUT) :: pn_d, hp_d, ht_d, q_d
     REAL(sp), INTENT(OUT) :: l
     REAL(sp) :: l_d
-    REAL(sp) :: inv_cp, dt, fhp, fht
-    REAL(sp) :: inv_cp_d, fhp_d, fht_d
+    REAL(sp), DIMENSION(2, 2) :: jacob
+    REAL(sp), DIMENSION(2, 2) :: jacob_d
+    REAL(sp), DIMENSION(2) :: dh, delta_h
+    REAL(sp), DIMENSION(2) :: dh_d, delta_h_d
+    REAL(sp) :: inv_cp, inv_ct, hp0, ht0, dt, fhp, fht
+    REAL(sp) :: inv_cp_d, inv_ct_d, hp0_d, ht0_d, fhp_d, fht_d
+    LOGICAL :: converged
+    INTEGER :: j
+    INTEGER, SAVE :: maxiter=10
+    INTRINSIC SQRT
+    REAL(sp) :: arg1
+    REAL(sp) :: result1
     REAL(sp) :: temp
     REAL(sp) :: temp0
     REAL(sp) :: temp1
-! integer :: i
-! integer :: n_subtimesteps = 4
+    REAL(sp) :: temp2
+    REAL*4 :: temp3
+    REAL*4 :: temp4
     inv_cp_d = -(cp_d/cp**2)
     inv_cp = 1._sp/cp
-! dt = 1._sp/real(n_subtimesteps, sp)
+    inv_ct_d = -(ct_d/ct**2)
+    inv_ct = 1._sp/ct
+! impervious area percentage at cell scale applied to neutralized rainfall - no infiltration for imperviousness*pn
+    pn_d = (1._sp-imperviousness)*pn_d
+    pn = (1._sp-imperviousness)*pn
     dt = 1._sp
-!do i = 1, n_subtimesteps
-! Range of correction pn, en: (0, 2)
-    temp = (fq(2)+1._sp)*(-hp+2._sp)
-    fhp_d = (1._sp-hp**2)*(pn*fq_d(1)+(fq(1)+1._sp)*pn_d) - (fq(1)+1._sp&
-&     )*pn*2*hp*hp_d - en*hp*((2._sp-hp)*fq_d(2)-(fq(2)+1._sp)*hp_d) - &
-&     temp*(hp*en_d+en*hp_d)
-    fhp = (fq(1)+1._sp)*pn*(1._sp-hp*hp) - temp*(en*hp)
-    hp_d = hp_d + dt*(inv_cp*fhp_d+fhp*inv_cp_d)
-    hp = hp + dt*fhp*inv_cp
-    IF (hp .LE. 0._sp) THEN
-      hp = 1.e-6_sp
-      hp_d = 0.0_4
-    END IF
-    IF (hp .GE. 1._sp) THEN
-      hp = 1._sp - 1.e-6_sp
-      hp_d = 0.0_4
-    END IF
-! Range of correction c0.9: (1, 0); kexc, ct: (0, 2)
-    temp = (-(fq(3)*fq(3))+1._sp)*(hp*hp)
-    temp0 = ht**3.5_sp
-    temp1 = ht**5
-    fht_d = 0.9_sp*((fq(1)+1._sp)*pn*((1._sp-fq(3)**2)*2*hp*hp_d-hp**2*2&
-&     *fq(3)*fq_d(3))+temp*(pn*fq_d(1)+(fq(1)+1._sp)*pn_d)) + temp0*(&
-&     kexc*fq_d(4)+(fq(4)+1._sp)*kexc_d) + ((fq(4)+1._sp)*kexc*3.5_sp*ht&
-&     **2.5-(fq(5)+1._sp)*ct*5*ht**4)*ht_d - temp1*(ct*fq_d(5)+(fq(5)+&
-&     1._sp)*ct_d)
-    fht = 0.9_sp*(temp*((fq(1)+1._sp)*pn)) + (fq(4)+1._sp)*kexc*temp0 - &
-&     (fq(5)+1._sp)*ct*temp1
-    ht_d = ht_d + dt*(fht_d-fht*ct_d/ct)/ct
-    ht = ht + dt*fht/ct
-    IF (ht .LE. 0._sp) THEN
-      ht = 1.e-6_sp
-      ht_d = 0.0_4
-    END IF
-    IF (ht .GE. 1._sp) THEN
-      ht = 1._sp - 1.e-6_sp
-      ht_d = 0.0_4
-    END IF
-!end do
+    hp0_d = hp_d
+    hp0 = hp
+    ht0_d = ht_d
+    ht0 = ht
+    converged = .false.
+    j = 0
+    dh_d = 0.0_4
+    delta_h_d = 0.0_4
+    jacob_d = 0.0_4
+    DO WHILE (.NOT.converged .AND. j .LT. maxiter)
+! Range of correction for the two terms: (0, 2)
+      temp = (-hp+2._sp)*(fq(2)+1._sp)
+      temp0 = (-(hp*hp)+1._sp)*pn*(fq(1)+1._sp) - hp*en*temp
+      fhp_d = inv_cp*((1._sp-hp**2)*((fq(1)+1._sp)*pn_d+pn*fq_d(1))-pn*(&
+&       fq(1)+1._sp)*2*hp*hp_d-temp*(en*hp_d+hp*en_d)-hp*en*((2._sp-hp)*&
+&       fq_d(2)-(fq(2)+1._sp)*hp_d)) + temp0*inv_cp_d
+      fhp = temp0*inv_cp
+      dh_d(1) = hp_d - hp0_d - dt*fhp_d
+      dh(1) = hp - hp0 - dt*fhp
+! Range of correction for the three terms: (0, 2)
+      temp0 = ht**5
+      temp = ht**3.5_sp
+      temp1 = 0.9_sp*(fq(1)+1._sp)*pn*(hp*hp) - 0.25_sp*(fq(4)+1._sp)*ct&
+&       *temp0 + temp*kexc*(fq(3)+1._sp)
+      fht_d = inv_ct*(0.9_sp*(hp**2*(pn*fq_d(1)+(fq(1)+1._sp)*pn_d)+(fq(&
+&       1)+1._sp)*pn*2*hp*hp_d)-0.25_sp*(temp0*(ct*fq_d(4)+(fq(4)+1._sp)&
+&       *ct_d)+(fq(4)+1._sp)*ct*5*ht**4*ht_d)+kexc*(fq(3)+1._sp)*3.5_sp*&
+&       ht**2.5*ht_d+temp*((fq(3)+1._sp)*kexc_d+kexc*fq_d(3))) + temp1*&
+&       inv_ct_d
+      fht = temp1*inv_ct
+      dh_d(2) = ht_d - ht0_d - dt*fht_d
+      dh(2) = ht - ht0 - dt*fht
+! 1 - dt*nabla_hp(fhp)
+      temp1 = jacobian_nn_1(1)*(-(hp*hp)+1) - 2._sp*hp*(fq(1)+1._sp)
+      temp0 = jacobian_nn_1(2)*hp*(-hp+2._sp) + 2._sp*(-hp+1._sp)*(fq(2)&
+&       +1._sp)
+      temp = pn*temp1 - en*temp0
+      jacob_d(1, 1) = -(dt*(inv_cp*(temp1*pn_d+pn*((1-hp**2)*&
+&       jacobian_nn_1_d(1)-jacobian_nn_1(1)*2*hp*hp_d-2._sp*((fq(1)+&
+&       1._sp)*hp_d+hp*fq_d(1)))-temp0*en_d-en*((2._sp-hp)*(hp*&
+&       jacobian_nn_1_d(2)+jacobian_nn_1(2)*hp_d)-jacobian_nn_1(2)*hp*&
+&       hp_d+2._sp*((1._sp-hp)*fq_d(2)-(fq(2)+1._sp)*hp_d)))+temp*&
+&       inv_cp_d))
+      jacob(1, 1) = 1._sp - dt*(temp*inv_cp)
+! -dt*nabla_ht(fhp)
+      temp1 = pn*jacobian_nn_2(1)*(-(hp*hp)+1) - en*hp*jacobian_nn_2(2)*&
+&       (-hp+2._sp)
+      jacob_d(1, 2) = -(dt*(inv_cp*((1-hp**2)*(jacobian_nn_2(1)*pn_d+pn*&
+&       jacobian_nn_2_d(1))-pn*jacobian_nn_2(1)*2*hp*hp_d-jacobian_nn_2(&
+&       2)*(2._sp-hp)*(hp*en_d+en*hp_d)-en*hp*((2._sp-hp)*&
+&       jacobian_nn_2_d(2)-jacobian_nn_2(2)*hp_d))+temp1*inv_cp_d))
+      jacob(1, 2) = -(dt*(temp1*inv_cp))
+! -dt*nabla_hp(fht)
+      temp1 = 2._sp*(fq(1)+1._sp) + jacobian_nn_1(1)*hp
+      temp0 = ht**5
+      temp = ht**3.5_sp
+      temp2 = 0.9_sp*pn*hp*temp1 - 0.25_sp*jacobian_nn_1(4)*ct*temp0 + &
+&       jacobian_nn_1(3)*kexc*temp
+      jacob_d(2, 1) = -(dt*(inv_ct*(0.9_sp*(temp1*(hp*pn_d+pn*hp_d)+pn*&
+&       hp*(2._sp*fq_d(1)+hp*jacobian_nn_1_d(1)+jacobian_nn_1(1)*hp_d))-&
+&       0.25_sp*(temp0*(ct*jacobian_nn_1_d(4)+jacobian_nn_1(4)*ct_d)+&
+&       jacobian_nn_1(4)*ct*5*ht**4*ht_d)+temp*(kexc*jacobian_nn_1_d(3)+&
+&       jacobian_nn_1(3)*kexc_d)+jacobian_nn_1(3)*kexc*3.5_sp*ht**2.5*&
+&       ht_d)+temp2*inv_ct_d))
+      jacob(2, 1) = -(dt*(temp2*inv_ct))
+! 1 - dt*nabla_ht(fht)
+      temp3 = ht**2.5
+      temp2 = 3.5_sp*(fq(3)+1._sp) + jacobian_nn_2(3)*ht
+      temp1 = ht**4
+      temp0 = 1.25_sp*(fq(4)+1._sp) + 0.25_sp*jacobian_nn_2(4)*ht
+      temp4 = temp2*kexc*temp3 + 0.9_sp*jacobian_nn_2(1)*pn*(hp*hp) - &
+&       temp0*ct*temp1
+      jacob_d(2, 2) = -(dt*(inv_ct*(temp3*(kexc*(3.5_sp*fq_d(3)+ht*&
+&       jacobian_nn_2_d(3)+jacobian_nn_2(3)*ht_d)+temp2*kexc_d)+temp2*&
+&       kexc*2.5*ht**1.5*ht_d+0.9_sp*(hp**2*(pn*jacobian_nn_2_d(1)+&
+&       jacobian_nn_2(1)*pn_d)+jacobian_nn_2(1)*pn*2*hp*hp_d)-ct*temp1*(&
+&       1.25_sp*fq_d(4)+0.25_sp*(ht*jacobian_nn_2_d(4)+jacobian_nn_2(4)*&
+&       ht_d))-temp0*(temp1*ct_d+ct*4*ht**3*ht_d))+temp4*inv_ct_d))
+      jacob(2, 2) = 1._sp - dt*(temp4*inv_ct)
+      CALL SOLVE_LINEAR_SYSTEM_2VARS_D(jacob, jacob_d, delta_h, &
+&                                delta_h_d, dh, dh_d)
+      hp_d = hp_d + delta_h_d(1)
+      hp = hp + delta_h(1)
+      IF (hp .LE. 0._sp) THEN
+        hp = 1.e-6_sp
+        hp_d = 0.0_4
+      END IF
+      IF (hp .GE. 1._sp) THEN
+        hp = 1._sp - 1.e-6_sp
+        hp_d = 0.0_4
+      END IF
+      ht_d = ht_d + delta_h_d(2)
+      ht = ht + delta_h(2)
+      IF (ht .LE. 0._sp) THEN
+        ht = 1.e-6_sp
+        ht_d = 0.0_4
+      END IF
+      IF (ht .GE. 1._sp) THEN
+        ht = 1._sp - 1.e-6_sp
+        ht_d = 0.0_4
+      END IF
+      arg1 = (delta_h(1)/hp)**2 + (delta_h(2)/ht)**2
+      result1 = SQRT(arg1)
+      converged = result1 .LT. 1.e-6_sp
+      j = j + 1
+    END DO
 ! Range of correction kexc: (0, 2)
-    temp1 = ht**3.5_sp
-    l_d = temp1*(kexc*fq_d(4)+(fq(4)+1._sp)*kexc_d) + (fq(4)+1._sp)*kexc&
+    temp2 = ht**3.5_sp
+    l_d = temp2*(kexc*fq_d(3)+(fq(3)+1._sp)*kexc_d) + (fq(3)+1._sp)*kexc&
 &     *3.5_sp*ht**2.5*ht_d
-    l = (fq(4)+1._sp)*kexc*temp1
+    l = (fq(3)+1._sp)*kexc*temp2
 ! Range of correction ct: (0, 2)
-! Range of correction c0.1: (1, 10)
 ! Range of correction pn: (0, 2)
-    temp1 = ht**5
-    temp0 = (fq(1)+1._sp)*pn*(hp*hp)
-    temp = 0.9_sp*(fq(3)*fq(3)) + 0.1_sp
-    q_d = temp1*(ct*fq_d(5)+(fq(5)+1._sp)*ct_d) + (fq(5)+1._sp)*ct*5*ht&
-&     **4*ht_d + temp0*0.9_sp*2*fq(3)*fq_d(3) + temp*(hp**2*(pn*fq_d(1)+&
-&     (fq(1)+1._sp)*pn_d)+(fq(1)+1._sp)*pn*2*hp*hp_d) + l_d
-    q = (fq(5)+1._sp)*ct*temp1 + temp*temp0 + l
+    temp2 = ht**5
+    q_d = 0.25_sp*(temp2*(ct*fq_d(4)+(fq(4)+1._sp)*ct_d)+(fq(4)+1._sp)*&
+&     ct*5*ht**4*ht_d) + 0.1_sp*(hp**2*(pn*fq_d(1)+(fq(1)+1._sp)*pn_d)+(&
+&     fq(1)+1._sp)*pn*2*hp*hp_d) + l_d
+    q = 0.25_sp*((fq(4)+1._sp)*ct*temp2) + 0.1_sp*((fq(1)+1._sp)*pn*(hp*&
+&     hp)) + l
   END SUBROUTINE GR_PRODUCTION_TRANSFER_ODE_MLP_D
 
 !  Differentiation of gr_production_transfer_ode_mlp in reverse (adjoint) mode (with options fixinterface noISIZE context):
-!   gradient     of useful results: q kexc hp ht en fq cp pn ct
-!   with respect to varying inputs: kexc hp ht en fq cp pn ct
-  SUBROUTINE GR_PRODUCTION_TRANSFER_ODE_MLP_B(fq, fq_b, pn, pn_b, en, &
-&   en_b, cp, cp_b, ct, ct_b, kexc, kexc_b, hp, hp_b, ht, ht_b, q, q_b, &
-&   l)
+!   gradient     of useful results: q kexc hp ht en jacobian_nn_1
+!                jacobian_nn_2 fq cp pn ct
+!   with respect to varying inputs: kexc hp ht en jacobian_nn_1
+!                jacobian_nn_2 fq cp pn ct
+  SUBROUTINE GR_PRODUCTION_TRANSFER_ODE_MLP_B(fq, fq_b, jacobian_nn_1, &
+&   jacobian_nn_1_b, jacobian_nn_2, jacobian_nn_2_b, pn, pn_b, en, en_b&
+&   , imperviousness, cp, cp_b, ct, ct_b, kexc, kexc_b, hp, hp_b, ht, &
+&   ht_b, q, q_b, l)
     IMPLICIT NONE
 ! fixed NN output size
-    REAL(sp), DIMENSION(5), INTENT(IN) :: fq
-    REAL(sp), DIMENSION(5) :: fq_b
-    REAL(sp), INTENT(IN) :: pn, en, cp, ct, kexc
-    REAL(sp) :: pn_b, en_b, cp_b, ct_b, kexc_b
-    REAL(sp), INTENT(INOUT) :: hp, ht, q
-    REAL(sp), INTENT(INOUT) :: hp_b, ht_b, q_b
+    REAL(sp), DIMENSION(4), INTENT(IN) :: fq
+    REAL(sp), DIMENSION(4) :: fq_b
+    INTRINSIC SIZE
+! grad wrt hp
+    REAL(sp), DIMENSION(SIZE(fq)), INTENT(IN) :: jacobian_nn_1
+    REAL(sp), DIMENSION(SIZE(fq)) :: jacobian_nn_1_b
+! grad wrt ht
+    REAL(sp), DIMENSION(SIZE(fq)), INTENT(IN) :: jacobian_nn_2
+    REAL(sp), DIMENSION(SIZE(fq)) :: jacobian_nn_2_b
+    REAL(sp), INTENT(IN) :: en, imperviousness, cp, ct, kexc
+    REAL(sp) :: en_b, cp_b, ct_b, kexc_b
+    REAL(sp), INTENT(INOUT) :: pn, hp, ht, q
+    REAL(sp), INTENT(INOUT) :: pn_b, hp_b, ht_b, q_b
     REAL(sp) :: l
-    REAL(sp) :: inv_cp, dt, fhp, fht
-    REAL(sp) :: inv_cp_b, fhp_b, fht_b
+    REAL(sp), DIMENSION(2, 2) :: jacob
+    REAL(sp), DIMENSION(2, 2) :: jacob_b
+    REAL(sp), DIMENSION(2) :: dh, delta_h
+    REAL(sp), DIMENSION(2) :: dh_b, delta_h_b
+    REAL(sp) :: inv_cp, inv_ct, hp0, ht0, dt, fhp, fht
+    REAL(sp) :: inv_cp_b, inv_ct_b, hp0_b, ht0_b, fhp_b, fht_b
+    LOGICAL :: converged
+    INTEGER :: j
+    INTEGER, SAVE :: maxiter=10
+    INTRINSIC SQRT
+    REAL(sp) :: arg1
+    REAL(sp) :: result1
+    REAL(sp) :: temp
     REAL(sp) :: temp_b
+    REAL(sp) :: temp0
     REAL(sp) :: temp_b0
+    REAL(sp) :: temp1
     REAL(sp) :: temp_b1
+    REAL(sp) :: temp2
     REAL(sp) :: temp_b2
+    REAL(sp) :: temp3
+    REAL(sp) :: temp_b3
+    REAL(sp) :: temp4
+    REAL*4 :: temp_b4
+    REAL*4 :: temp5
+    REAL(sp) :: temp_b5
     INTEGER :: branch
+    INTEGER :: ad_count
+    INTEGER :: i
     REAL(sp) :: l_b
-! integer :: i
-! integer :: n_subtimesteps = 4
     inv_cp = 1._sp/cp
-! dt = 1._sp/real(n_subtimesteps, sp)
+    inv_ct = 1._sp/ct
+! impervious area percentage at cell scale applied to neutralized rainfall - no infiltration for imperviousness*pn
+    pn = (1._sp-imperviousness)*pn
     dt = 1._sp
-!do i = 1, n_subtimesteps
-! Range of correction pn, en: (0, 2)
-    fhp = (1._sp+fq(1))*pn*(1._sp-hp**2) - (1._sp+fq(2))*en*hp*(2._sp-hp&
-&     )
-    CALL PUSHREAL4(hp)
-    hp = hp + dt*fhp*inv_cp
-    IF (hp .LE. 0._sp) THEN
-      hp = 1.e-6_sp
-      CALL PUSHCONTROL1B(0)
-    ELSE
-      CALL PUSHCONTROL1B(1)
-    END IF
-    IF (hp .GE. 1._sp) THEN
-      hp = 1._sp - 1.e-6_sp
-      CALL PUSHCONTROL1B(0)
-    ELSE
-      CALL PUSHCONTROL1B(1)
-    END IF
-! Range of correction c0.9: (1, 0); kexc, ct: (0, 2)
-    fht = 0.9_sp*(1._sp-fq(3)**2)*(1._sp+fq(1))*pn*hp**2 + (1._sp+fq(4))&
-&     *kexc*ht**3.5_sp - (1._sp+fq(5))*ct*ht**5
-    CALL PUSHREAL4(ht)
-    ht = ht + dt*fht/ct
-    IF (ht .LE. 0._sp) THEN
-      ht = 1.e-6_sp
-      CALL PUSHCONTROL1B(0)
-    ELSE
-      CALL PUSHCONTROL1B(1)
-    END IF
-    IF (ht .GE. 1._sp) THEN
-      ht = 1._sp - 1.e-6_sp
-      CALL PUSHCONTROL1B(0)
-    ELSE
-      CALL PUSHCONTROL1B(1)
-    END IF
+    hp0 = hp
+    ht0 = ht
+    converged = .false.
+    j = 0
+    ad_count = 0
+    DO WHILE (.NOT.converged .AND. j .LT. maxiter)
+! Range of correction for the two terms: (0, 2)
+      fhp = ((1._sp-hp**2)*pn*(1._sp+fq(1))-hp*(2._sp-hp)*en*(1._sp+fq(2&
+&       )))*inv_cp
+      CALL PUSHREAL4(dh(1))
+      dh(1) = hp - hp0 - dt*fhp
+! Range of correction for the three terms: (0, 2)
+      fht = (0.9_sp*(1._sp+fq(1))*pn*hp**2-0.25_sp*(1._sp+fq(4))*ct*ht**&
+&       5+kexc*ht**3.5_sp*(1._sp+fq(3)))*inv_ct
+      CALL PUSHREAL4(dh(2))
+      dh(2) = ht - ht0 - dt*fht
+! 1 - dt*nabla_hp(fhp)
+      CALL PUSHREAL4(jacob(1, 1))
+      jacob(1, 1) = 1._sp - dt*(pn*(jacobian_nn_1(1)*(1-hp**2)-2._sp*hp*&
+&       (1._sp+fq(1)))-en*(jacobian_nn_1(2)*hp*(2._sp-hp)+2._sp*(1._sp-&
+&       hp)*(1._sp+fq(2))))*inv_cp
+! -dt*nabla_ht(fhp)
+      CALL PUSHREAL4(jacob(1, 2))
+      jacob(1, 2) = -(dt*(pn*jacobian_nn_2(1)*(1-hp**2)-en*jacobian_nn_2&
+&       (2)*hp*(2._sp-hp))*inv_cp)
+! -dt*nabla_hp(fht)
+      CALL PUSHREAL4(jacob(2, 1))
+      jacob(2, 1) = -(dt*(0.9_sp*pn*hp*(2._sp*(1._sp+fq(1))+&
+&       jacobian_nn_1(1)*hp)-0.25_sp*jacobian_nn_1(4)*ct*ht**5+&
+&       jacobian_nn_1(3)*kexc*ht**3.5_sp)*inv_ct)
+! 1 - dt*nabla_ht(fht)
+      CALL PUSHREAL4(jacob(2, 2))
+      jacob(2, 2) = 1._sp - dt*((3.5_sp*(1._sp+fq(3))+jacobian_nn_2(3)*&
+&       ht)*kexc*ht**2.5+0.9_sp*jacobian_nn_2(1)*pn*hp**2-(1.25_sp*(&
+&       1._sp+fq(4))+0.25_sp*jacobian_nn_2(4)*ht)*ct*ht**4)*inv_ct
+      CALL SOLVE_LINEAR_SYSTEM_2VARS(jacob, delta_h, dh)
+      CALL PUSHREAL4(hp)
+      hp = hp + delta_h(1)
+      IF (hp .LE. 0._sp) THEN
+        hp = 1.e-6_sp
+        CALL PUSHCONTROL1B(0)
+      ELSE
+        CALL PUSHCONTROL1B(1)
+      END IF
+      IF (hp .GE. 1._sp) THEN
+        hp = 1._sp - 1.e-6_sp
+        CALL PUSHCONTROL1B(0)
+      ELSE
+        CALL PUSHCONTROL1B(1)
+      END IF
+      CALL PUSHREAL4(ht)
+      ht = ht + delta_h(2)
+      IF (ht .LE. 0._sp) THEN
+        ht = 1.e-6_sp
+        CALL PUSHCONTROL1B(0)
+      ELSE
+        CALL PUSHCONTROL1B(1)
+      END IF
+      IF (ht .GE. 1._sp) THEN
+        ht = 1._sp - 1.e-6_sp
+        CALL PUSHCONTROL1B(0)
+      ELSE
+        CALL PUSHCONTROL1B(1)
+      END IF
+      arg1 = (delta_h(1)/hp)**2 + (delta_h(2)/ht)**2
+      result1 = SQRT(arg1)
+      converged = result1 .LT. 1.e-6_sp
+      j = j + 1
+      ad_count = ad_count + 1
+    END DO
+    CALL PUSHINTEGER4(ad_count)
     l_b = q_b
-    temp_b2 = ht**5*q_b
-    ht_b = ht_b + 5*ht**4*(fq(5)+1._sp)*ct*q_b + 3.5_sp*ht**2.5*(fq(4)+&
-&     1._sp)*kexc*l_b
-    fq_b(3) = fq_b(3) + 2*fq(3)*0.9_sp*(fq(1)+1._sp)*pn*hp**2*q_b
-    temp_b1 = (0.9_sp*fq(3)**2+0.1_sp)*q_b
-    temp_b0 = hp**2*temp_b1
-    hp_b = hp_b + 2*hp*(fq(1)+1._sp)*pn*temp_b1
-    fq_b(1) = fq_b(1) + pn*temp_b0
-    pn_b = pn_b + (fq(1)+1._sp)*temp_b0
-    fq_b(5) = fq_b(5) + ct*temp_b2
-    ct_b = ct_b + (fq(5)+1._sp)*temp_b2
-    temp_b2 = ht**3.5_sp*l_b
-    fq_b(4) = fq_b(4) + kexc*temp_b2
-    kexc_b = kexc_b + (fq(4)+1._sp)*temp_b2
-    CALL POPCONTROL1B(branch)
-    IF (branch .EQ. 0) ht_b = 0.0_4
-    CALL POPCONTROL1B(branch)
-    IF (branch .EQ. 0) ht_b = 0.0_4
+    temp_b5 = ht**5*0.25_sp*q_b
+    ht_b = ht_b + 5*ht**4*(fq(4)+1._sp)*ct*0.25_sp*q_b + 3.5_sp*ht**2.5*&
+&     (fq(3)+1._sp)*kexc*l_b
+    temp_b3 = hp**2*0.1_sp*q_b
+    hp_b = hp_b + 2*hp*(fq(1)+1._sp)*pn*0.1_sp*q_b
+    fq_b(1) = fq_b(1) + pn*temp_b3
+    pn_b = pn_b + (fq(1)+1._sp)*temp_b3
+    fq_b(4) = fq_b(4) + ct*temp_b5
+    ct_b = ct_b + (fq(4)+1._sp)*temp_b5
+    temp_b5 = ht**3.5_sp*l_b
+    fq_b(3) = fq_b(3) + kexc*temp_b5
+    kexc_b = kexc_b + (fq(3)+1._sp)*temp_b5
     dt = 1._sp
-    CALL POPREAL4(ht)
-    temp_b2 = dt*ht_b/ct
-    fht_b = temp_b2
-    ct_b = ct_b - fht*temp_b2/ct
-    temp_b1 = (fq(1)+1._sp)*pn*0.9_sp*fht_b
-    temp_b0 = (1._sp-fq(3)**2)*hp**2*0.9_sp*fht_b
-    temp_b = ht**3.5_sp*fht_b
-    ht_b = ht_b + (3.5_sp*ht**2.5*(fq(4)+1._sp)*kexc-5*ht**4*(fq(5)+&
-&     1._sp)*ct)*fht_b
-    temp_b2 = -(ht**5*fht_b)
-    fq_b(5) = fq_b(5) + ct*temp_b2
-    ct_b = ct_b + (fq(5)+1._sp)*temp_b2
-    fq_b(4) = fq_b(4) + kexc*temp_b
-    kexc_b = kexc_b + (fq(4)+1._sp)*temp_b
-    fq_b(1) = fq_b(1) + pn*temp_b0
-    pn_b = pn_b + (fq(1)+1._sp)*temp_b0
-    fq_b(3) = fq_b(3) - 2*fq(3)*hp**2*temp_b1
-    hp_b = hp_b + 2*hp*(1._sp-fq(3)**2)*temp_b1
-    CALL POPCONTROL1B(branch)
-    IF (branch .EQ. 0) hp_b = 0.0_4
-    CALL POPCONTROL1B(branch)
-    IF (branch .EQ. 0) hp_b = 0.0_4
     inv_cp = 1._sp/cp
-    CALL POPREAL4(hp)
-    fhp_b = inv_cp*dt*hp_b
-    inv_cp_b = fhp*dt*hp_b
-    temp_b = (1._sp-hp**2)*fhp_b
-    temp_b0 = -(en*hp*fhp_b)
-    temp_b1 = -((fq(2)+1._sp)*(2._sp-hp)*fhp_b)
-    hp_b = hp_b + en*temp_b1 - 2*hp*(fq(1)+1._sp)*pn*fhp_b - (fq(2)+&
-&     1._sp)*temp_b0
-    en_b = en_b + hp*temp_b1
-    fq_b(2) = fq_b(2) + (2._sp-hp)*temp_b0
-    fq_b(1) = fq_b(1) + pn*temp_b
-    pn_b = pn_b + (fq(1)+1._sp)*temp_b
+    inv_ct = 1._sp/ct
+    dh_b = 0.0_4
+    delta_h_b = 0.0_4
+    jacob_b = 0.0_4
+    hp0_b = 0.0_4
+    inv_cp_b = 0.0_4
+    inv_ct_b = 0.0_4
+    ht0_b = 0.0_4
+    CALL POPINTEGER4(ad_count)
+    DO i=1,ad_count
+      CALL POPCONTROL1B(branch)
+      IF (branch .EQ. 0) ht_b = 0.0_4
+      CALL POPCONTROL1B(branch)
+      IF (branch .EQ. 0) ht_b = 0.0_4
+      CALL POPREAL4(ht)
+      delta_h_b(2) = delta_h_b(2) + ht_b
+      CALL POPCONTROL1B(branch)
+      IF (branch .EQ. 0) hp_b = 0.0_4
+      CALL POPCONTROL1B(branch)
+      IF (branch .EQ. 0) hp_b = 0.0_4
+      temp3 = ht**3.5_sp
+      temp = ht**5
+      CALL POPREAL4(hp)
+      delta_h_b(1) = delta_h_b(1) + hp_b
+      CALL SOLVE_LINEAR_SYSTEM_2VARS_B(jacob, jacob_b, delta_h, &
+&                                delta_h_b, dh, dh_b)
+      CALL POPREAL4(jacob(2, 2))
+      temp5 = ht**2.5
+      temp4 = 3.5_sp*(fq(3)+1._sp) + jacobian_nn_2(3)*ht
+      temp2 = ht**4
+      temp1 = ct*temp2
+      temp0 = 1.25_sp*(fq(4)+1._sp) + 0.25_sp*jacobian_nn_2(4)*ht
+      temp_b4 = -(inv_ct*dt*jacob_b(2, 2))
+      inv_ct_b = inv_ct_b - (temp4*kexc*temp5+0.9_sp*(jacobian_nn_2(1)*&
+&       pn*hp**2)-temp0*temp1)*dt*jacob_b(2, 2)
+      jacob_b(2, 2) = 0.0_4
+      temp_b5 = kexc*temp5*temp_b4
+      kexc_b = kexc_b + temp4*temp5*temp_b4
+      temp_b3 = hp**2*0.9_sp*temp_b4
+      temp_b0 = -(temp1*temp_b4)
+      ct_b = ct_b - temp2*temp0*temp_b4
+      fq_b(4) = fq_b(4) + 1.25_sp*temp_b0
+      jacobian_nn_2_b(4) = jacobian_nn_2_b(4) + ht*0.25_sp*temp_b0
+      jacobian_nn_2_b(1) = jacobian_nn_2_b(1) + pn*temp_b3
+      pn_b = pn_b + jacobian_nn_2(1)*temp_b3
+      jacobian_nn_2_b(3) = jacobian_nn_2_b(3) + ht*temp_b5
+      CALL POPREAL4(jacob(2, 1))
+      temp2 = 2._sp*(fq(1)+1._sp) + jacobian_nn_1(1)*hp
+      temp_b3 = -(inv_ct*dt*jacob_b(2, 1))
+      ht_b = ht_b + (2.5*ht**1.5*temp4*kexc-4*ht**3*ct*temp0)*temp_b4 + &
+&       jacobian_nn_2(4)*0.25_sp*temp_b0 + jacobian_nn_2(3)*temp_b5 + (&
+&       3.5_sp*ht**2.5*jacobian_nn_1(3)*kexc-5*ht**4*jacobian_nn_1(4)*ct&
+&       *0.25_sp)*temp_b3
+      temp0 = ht**5
+      temp4 = ht**3.5_sp
+      temp_b1 = temp2*0.9_sp*temp_b3
+      temp_b2 = pn*hp*0.9_sp*temp_b3
+      hp_b = hp_b + 2*hp*jacobian_nn_2(1)*pn*0.9_sp*temp_b4 + &
+&       jacobian_nn_1(1)*temp_b2 + pn*temp_b1
+      temp_b = -(temp0*0.25_sp*temp_b3)
+      jacobian_nn_1_b(3) = jacobian_nn_1_b(3) + kexc*temp4*temp_b3
+      kexc_b = kexc_b + jacobian_nn_1(3)*temp4*temp_b3
+      jacobian_nn_1_b(4) = jacobian_nn_1_b(4) + ct*temp_b
+      fq_b(1) = fq_b(1) + 2._sp*temp_b2
+      jacobian_nn_1_b(1) = jacobian_nn_1_b(1) + hp*temp_b2
+      CALL POPREAL4(jacob(1, 2))
+      temp1 = jacobian_nn_2(2)*(-hp+2._sp)
+      temp_b3 = -(inv_cp*dt*jacob_b(1, 2))
+      en_b = en_b - hp*temp1*temp_b3
+      CALL POPREAL4(jacob(1, 1))
+      CALL POPREAL4(dh(2))
+      ht0_b = ht0_b - dh_b(2)
+      fht_b = -(dt*dh_b(2))
+      inv_ct_b = inv_ct_b + (0.9_sp*((fq(1)+1._sp)*pn*hp**2)-0.25_sp*((&
+&       fq(4)+1._sp)*ct*temp)+temp3*(kexc*(fq(3)+1._sp)))*fht_b - (&
+&       0.9_sp*(pn*hp*temp2)-0.25_sp*(jacobian_nn_1(4)*ct*temp0)+&
+&       jacobian_nn_1(3)*kexc*temp4)*dt*jacob_b(2, 1)
+      jacob_b(2, 1) = 0.0_4
+      temp2 = -(hp*hp) + 1
+      pn_b = pn_b + hp*temp_b1 + jacobian_nn_2(1)*temp2*temp_b3
+      inv_cp_b = inv_cp_b - (pn*jacobian_nn_2(1)*temp2-en*hp*temp1)*dt*&
+&       jacob_b(1, 2)
+      jacob_b(1, 2) = 0.0_4
+      jacobian_nn_2_b(1) = jacobian_nn_2_b(1) + pn*temp2*temp_b3
+      temp_b1 = -(en*hp*temp_b3)
+      hp_b = hp_b - (2*hp*pn*jacobian_nn_2(1)+en*temp1)*temp_b3 - &
+&       jacobian_nn_2(2)*temp_b1
+      jacobian_nn_2_b(2) = jacobian_nn_2_b(2) + (2._sp-hp)*temp_b1
+      temp2 = jacobian_nn_1(1)*(-(hp*hp)+1) - 2._sp*hp*(fq(1)+1._sp)
+      temp1 = jacobian_nn_1(2)*hp*(-hp+2._sp) + 2._sp*(-hp+1._sp)*(fq(2)&
+&       +1._sp)
+      temp_b3 = -(inv_cp*dt*jacob_b(1, 1))
+      inv_cp_b = inv_cp_b - (pn*temp2-en*temp1)*dt*jacob_b(1, 1)
+      jacob_b(1, 1) = 0.0_4
+      temp_b2 = pn*temp_b3
+      en_b = en_b - temp1*temp_b3
+      temp_b1 = -(en*temp_b3)
+      jacobian_nn_1_b(2) = jacobian_nn_1_b(2) + hp*(2._sp-hp)*temp_b1
+      hp_b = hp_b + (jacobian_nn_1(2)*(2._sp-hp)-jacobian_nn_1(2)*hp-(fq&
+&       (2)+1._sp)*2._sp)*temp_b1
+      fq_b(2) = fq_b(2) + (1._sp-hp)*2._sp*temp_b1
+      jacobian_nn_1_b(1) = jacobian_nn_1_b(1) + (1-hp**2)*temp_b2
+      temp_b1 = inv_ct*fht_b
+      fq_b(3) = fq_b(3) + 3.5_sp*temp_b5 + kexc*temp3*temp_b1
+      hp_b = hp_b + 2*hp*(fq(1)+1._sp)*pn*0.9_sp*temp_b1 - (2*hp*&
+&       jacobian_nn_1(1)+(fq(1)+1._sp)*2._sp)*temp_b2
+      ht_b = ht_b + dh_b(2) + (3.5_sp*ht**2.5*kexc*(fq(3)+1._sp)-5*ht**4&
+&       *(fq(4)+1._sp)*ct*0.25_sp)*temp_b1
+      dh_b(2) = 0.0_4
+      temp_b0 = hp**2*0.9_sp*temp_b1
+      pn_b = pn_b + temp2*temp_b3 + (fq(1)+1._sp)*temp_b0
+      fq_b(1) = fq_b(1) + pn*temp_b0 - hp*2._sp*temp_b2
+      temp_b2 = -(temp*0.25_sp*temp_b1)
+      ct_b = ct_b + jacobian_nn_1(4)*temp_b + (fq(4)+1._sp)*temp_b2
+      kexc_b = kexc_b + (fq(3)+1._sp)*temp3*temp_b1
+      fq_b(4) = fq_b(4) + ct*temp_b2
+      CALL POPREAL4(dh(1))
+      hp0_b = hp0_b - dh_b(1)
+      fhp_b = -(dt*dh_b(1))
+      temp1 = (-hp+2._sp)*(fq(2)+1._sp)
+      temp_b = inv_cp*fhp_b
+      inv_cp_b = inv_cp_b + ((1._sp-hp**2)*(pn*(fq(1)+1._sp))-hp*en*&
+&       temp1)*fhp_b
+      temp_b0 = (1._sp-hp**2)*temp_b
+      en_b = en_b - hp*temp1*temp_b
+      temp_b1 = -(hp*en*temp_b)
+      hp_b = hp_b + dh_b(1) - (2*hp*pn*(fq(1)+1._sp)+en*temp1)*temp_b - &
+&       (fq(2)+1._sp)*temp_b1
+      dh_b(1) = 0.0_4
+      fq_b(2) = fq_b(2) + (2._sp-hp)*temp_b1
+      pn_b = pn_b + (fq(1)+1._sp)*temp_b0
+      fq_b(1) = fq_b(1) + pn*temp_b0
+    END DO
+    ht_b = ht_b + ht0_b
+    hp_b = hp_b + hp0_b
+    pn_b = (1._sp-imperviousness)*pn_b
+    ct_b = ct_b - inv_ct_b/ct**2
     cp_b = cp_b - inv_cp_b/cp**2
   END SUBROUTINE GR_PRODUCTION_TRANSFER_ODE_MLP_B
 
-  SUBROUTINE GR_PRODUCTION_TRANSFER_ODE_MLP(fq, pn, en, cp, ct, kexc, hp&
-&   , ht, q, l)
+  SUBROUTINE GR_PRODUCTION_TRANSFER_ODE_MLP(fq, jacobian_nn_1, &
+&   jacobian_nn_2, pn, en, imperviousness, cp, ct, kexc, hp, ht, q, l)
     IMPLICIT NONE
 ! fixed NN output size
-    REAL(sp), DIMENSION(5), INTENT(IN) :: fq
-    REAL(sp), INTENT(IN) :: pn, en, cp, ct, kexc
-    REAL(sp), INTENT(INOUT) :: hp, ht, q
+    REAL(sp), DIMENSION(4), INTENT(IN) :: fq
+    INTRINSIC SIZE
+! grad wrt hp
+    REAL(sp), DIMENSION(SIZE(fq)), INTENT(IN) :: jacobian_nn_1
+! grad wrt ht
+    REAL(sp), DIMENSION(SIZE(fq)), INTENT(IN) :: jacobian_nn_2
+    REAL(sp), INTENT(IN) :: en, imperviousness, cp, ct, kexc
+    REAL(sp), INTENT(INOUT) :: pn, hp, ht, q
     REAL(sp), INTENT(OUT) :: l
-    REAL(sp) :: inv_cp, dt, fhp, fht
-! integer :: i
-! integer :: n_subtimesteps = 4
+    REAL(sp), DIMENSION(2, 2) :: jacob
+    REAL(sp), DIMENSION(2) :: dh, delta_h
+    REAL(sp) :: inv_cp, inv_ct, hp0, ht0, dt, fhp, fht
+    LOGICAL :: converged
+    INTEGER :: j
+    INTEGER, SAVE :: maxiter=10
+    INTRINSIC SQRT
+    REAL(sp) :: arg1
+    REAL(sp) :: result1
     inv_cp = 1._sp/cp
-! dt = 1._sp/real(n_subtimesteps, sp)
+    inv_ct = 1._sp/ct
+! impervious area percentage at cell scale applied to neutralized rainfall - no infiltration for imperviousness*pn
+    pn = (1._sp-imperviousness)*pn
     dt = 1._sp
-!do i = 1, n_subtimesteps
-! Range of correction pn, en: (0, 2)
-    fhp = (1._sp+fq(1))*pn*(1._sp-hp**2) - (1._sp+fq(2))*en*hp*(2._sp-hp&
-&     )
-    hp = hp + dt*fhp*inv_cp
-    IF (hp .LE. 0._sp) hp = 1.e-6_sp
-    IF (hp .GE. 1._sp) hp = 1._sp - 1.e-6_sp
-! Range of correction c0.9: (1, 0); kexc, ct: (0, 2)
-    fht = 0.9_sp*(1._sp-fq(3)**2)*(1._sp+fq(1))*pn*hp**2 + (1._sp+fq(4))&
-&     *kexc*ht**3.5_sp - (1._sp+fq(5))*ct*ht**5
-    ht = ht + dt*fht/ct
-    IF (ht .LE. 0._sp) ht = 1.e-6_sp
-    IF (ht .GE. 1._sp) ht = 1._sp - 1.e-6_sp
-!end do
+    hp0 = hp
+    ht0 = ht
+    converged = .false.
+    j = 0
+    DO WHILE (.NOT.converged .AND. j .LT. maxiter)
+! Range of correction for the two terms: (0, 2)
+      fhp = ((1._sp-hp**2)*pn*(1._sp+fq(1))-hp*(2._sp-hp)*en*(1._sp+fq(2&
+&       )))*inv_cp
+      dh(1) = hp - hp0 - dt*fhp
+! Range of correction for the three terms: (0, 2)
+      fht = (0.9_sp*(1._sp+fq(1))*pn*hp**2-0.25_sp*(1._sp+fq(4))*ct*ht**&
+&       5+kexc*ht**3.5_sp*(1._sp+fq(3)))*inv_ct
+      dh(2) = ht - ht0 - dt*fht
+! 1 - dt*nabla_hp(fhp)
+      jacob(1, 1) = 1._sp - dt*(pn*(jacobian_nn_1(1)*(1-hp**2)-2._sp*hp*&
+&       (1._sp+fq(1)))-en*(jacobian_nn_1(2)*hp*(2._sp-hp)+2._sp*(1._sp-&
+&       hp)*(1._sp+fq(2))))*inv_cp
+! -dt*nabla_ht(fhp)
+      jacob(1, 2) = -(dt*(pn*jacobian_nn_2(1)*(1-hp**2)-en*jacobian_nn_2&
+&       (2)*hp*(2._sp-hp))*inv_cp)
+! -dt*nabla_hp(fht)
+      jacob(2, 1) = -(dt*(0.9_sp*pn*hp*(2._sp*(1._sp+fq(1))+&
+&       jacobian_nn_1(1)*hp)-0.25_sp*jacobian_nn_1(4)*ct*ht**5+&
+&       jacobian_nn_1(3)*kexc*ht**3.5_sp)*inv_ct)
+! 1 - dt*nabla_ht(fht)
+      jacob(2, 2) = 1._sp - dt*((3.5_sp*(1._sp+fq(3))+jacobian_nn_2(3)*&
+&       ht)*kexc*ht**2.5+0.9_sp*jacobian_nn_2(1)*pn*hp**2-(1.25_sp*(&
+&       1._sp+fq(4))+0.25_sp*jacobian_nn_2(4)*ht)*ct*ht**4)*inv_ct
+      CALL SOLVE_LINEAR_SYSTEM_2VARS(jacob, delta_h, dh)
+      hp = hp + delta_h(1)
+      IF (hp .LE. 0._sp) hp = 1.e-6_sp
+      IF (hp .GE. 1._sp) hp = 1._sp - 1.e-6_sp
+      ht = ht + delta_h(2)
+      IF (ht .LE. 0._sp) ht = 1.e-6_sp
+      IF (ht .GE. 1._sp) ht = 1._sp - 1.e-6_sp
+      arg1 = (delta_h(1)/hp)**2 + (delta_h(2)/ht)**2
+      result1 = SQRT(arg1)
+      converged = result1 .LT. 1.e-6_sp
+      j = j + 1
+    END DO
 ! Range of correction kexc: (0, 2)
-    l = (1._sp+fq(4))*kexc*ht**3.5_sp
+    l = (1._sp+fq(3))*kexc*ht**3.5_sp
 ! Range of correction ct: (0, 2)
-! Range of correction c0.1: (1, 10)
 ! Range of correction pn: (0, 2)
-    q = (1._sp+fq(5))*ct*ht**5 + (0.1_sp+0.9_sp*fq(3)**2)*(1._sp+fq(1))*&
-&     pn*hp**2 + l
+    q = 0.25_sp*(1._sp+fq(4))*ct*ht**5 + 0.1_sp*(1._sp+fq(1))*pn*hp**2 +&
+&     l
   END SUBROUTINE GR_PRODUCTION_TRANSFER_ODE_MLP
 
 !  Differentiation of gr4_time_step in forward (tangent) mode (with options fixinterface noISIZE context):
@@ -14843,7 +15688,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pn, en, pr, perc, l, prr, prd, qr, qd
+    REAL(sp) :: beta, pn, en, imperviousness, pr, perc, ps, es, l, prr, &
+&   prd, qr, qd
     REAL(sp) :: pn_d, en_d, pr_d, perc_d, l_d, prr_d, prd_d, qr_d, qd_d
     INTRINSIC MAX
     REAL(sp) :: temp
@@ -14860,13 +15706,16 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_INTERCEPTION_D(ac_prcp(k), ac_prcp_d(k), ac_pet(k), &
 &                            ac_ci(k), ac_ci_d(k), ac_hi(k), ac_hi_d(k)&
 &                            , pn, pn_d, en, en_d)
             CALL GR_PRODUCTION_D(0._sp, 0.0_4, 0._sp, 0.0_4, pn, pn_d, &
-&                          en, en_d, ac_cp(k), ac_cp_d(k), beta, ac_hp(k&
-&                          ), ac_hp_d(k), pr, pr_d, perc, perc_d)
+&                          en, en_d, imperviousness, ac_cp(k), ac_cp_d(k&
+&                          ), beta, ac_hp(k), ac_hp_d(k), pr, pr_d, perc&
+&                          , perc_d, ps, es)
             CALL GR_EXCHANGE_D(0._sp, 0.0_4, ac_kexc(k), ac_kexc_d(k), &
 &                        ac_ht(k), ac_ht_d(k), l, l_d)
           ELSE
@@ -14931,7 +15780,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pn, en, pr, perc, l, prr, prd, qr, qd
+    REAL(sp) :: beta, pn, en, imperviousness, pr, perc, ps, es, l, prr, &
+&   prd, qr, qd
     REAL(sp) :: pn_b, en_b, pr_b, perc_b, l_b, prr_b, prd_b, qr_b, qd_b
     INTRINSIC MAX
     REAL(sp) :: dummydiff_b
@@ -14952,15 +15802,17 @@ CONTAINS
           CALL PUSHCONTROL1B(0)
         ELSE
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL PUSHREAL4(en)
-            CALL PUSHREAL4(pn)
             CALL PUSHREAL4(ac_hi(k))
             CALL GR_INTERCEPTION(ac_prcp(k), ac_pet(k), ac_ci(k), ac_hi(&
 &                          k), pn, en)
             CALL PUSHREAL4(ac_hp(k))
-            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, ac_cp(k), beta, &
-&                        ac_hp(k), pr, perc)
+            CALL PUSHREAL4(pn)
+            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, imperviousness, &
+&                        ac_cp(k), beta, ac_hp(k), pr, perc, ps, es)
             CALL GR_EXCHANGE(0._sp, ac_kexc(k), ac_ht(k), l)
             CALL PUSHCONTROL1B(1)
           ELSE
@@ -15014,15 +15866,17 @@ CONTAINS
           IF (branch .NE. 0) THEN
             CALL GR_EXCHANGE_B(0._sp, dummydiff_b1, ac_kexc(k), &
 &                        ac_kexc_b(k), ac_ht(k), ac_ht_b(k), l, l_b)
+            imperviousness = input_data%physio_data%imperviousness(row, &
+&             col)
+            CALL POPREAL4(pn)
             CALL POPREAL4(ac_hp(k))
             pn_b = 0.0_4
             en_b = 0.0_4
             CALL GR_PRODUCTION_B(0._sp, dummydiff_b, 0._sp, dummydiff_b0&
-&                          , pn, pn_b, en, en_b, ac_cp(k), ac_cp_b(k), &
-&                          beta, ac_hp(k), ac_hp_b(k), pr, pr_b, perc, &
-&                          perc_b)
+&                          , pn, pn_b, en, en_b, imperviousness, ac_cp(k&
+&                          ), ac_cp_b(k), beta, ac_hp(k), ac_hp_b(k), pr&
+&                          , pr_b, perc, perc_b, ps, es)
             CALL POPREAL4(ac_hi(k))
-            CALL POPREAL4(pn)
             CALL POPREAL4(en)
             CALL GR_INTERCEPTION_B(ac_prcp(k), ac_prcp_b(k), ac_pet(k), &
 &                            ac_ci(k), ac_ci_b(k), ac_hi(k), ac_hi_b(k)&
@@ -15051,7 +15905,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac), INTENT(INOUT) :: ac_qt
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pn, en, pr, perc, l, prr, prd, qr, qd
+    REAL(sp) :: beta, pn, en, imperviousness, pr, perc, ps, es, l, prr, &
+&   prd, qr, qd
     INTRINSIC MAX
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
 &                              , 'prcp', ac_prcp)
@@ -15065,11 +15920,13 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_INTERCEPTION(ac_prcp(k), ac_pet(k), ac_ci(k), ac_hi(&
 &                          k), pn, en)
-            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, ac_cp(k), beta, &
-&                        ac_hp(k), pr, perc)
+            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, imperviousness, &
+&                        ac_cp(k), beta, ac_hp(k), pr, perc, ps, es)
             CALL GR_EXCHANGE(0._sp, ac_kexc(k), ac_ht(k), l)
           ELSE
             pr = 0._sp
@@ -15150,7 +16007,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d, pn_d, en_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pr, perc, l, prr, prd, qr, qd
+    REAL(sp) :: beta, imperviousness, pr, perc, ps, es, l, prr, prd, qr&
+&   , qd
     REAL(sp) :: pr_d, perc_d, l_d, prr_d, prd_d, qr_d, qd_d
     INTRINSIC MAX
     REAL(sp) :: temp
@@ -15212,12 +16070,15 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_PRODUCTION_D(output_layer(1, k), output_layer_d(1, k&
 &                          ), output_layer(2, k), output_layer_d(2, k), &
-&                          pn(k), pn_d(k), en(k), en_d(k), ac_cp(k), &
-&                          ac_cp_d(k), beta, ac_hp(k), ac_hp_d(k), pr, &
-&                          pr_d, perc, perc_d)
+&                          pn(k), pn_d(k), en(k), en_d(k), &
+&                          imperviousness, ac_cp(k), ac_cp_d(k), beta, &
+&                          ac_hp(k), ac_hp_d(k), pr, pr_d, perc, perc_d&
+&                          , ps, es)
             CALL GR_EXCHANGE_D(output_layer(4, k), output_layer_d(4, k)&
 &                        , ac_kexc(k), ac_kexc_d(k), ac_ht(k), ac_ht_d(k&
 &                        ), l, l_d)
@@ -15317,7 +16178,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b, pn_b, en_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pr, perc, l, prr, prd, qr, qd
+    REAL(sp) :: beta, imperviousness, pr, perc, ps, es, l, prr, prd, qr&
+&   , qd
     REAL(sp) :: pr_b, perc_b, l_b, prr_b, prd_b, qr_b, qd_b
     INTRINSIC MAX
     REAL(sp) :: temp_b
@@ -15381,13 +16243,16 @@ CONTAINS
         ELSE
           CALL PUSHINTEGER4(k)
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL PUSHREAL4(perc)
             CALL PUSHREAL4(pr)
             CALL PUSHREAL4(ac_hp(k))
+            CALL PUSHREAL4(pn(k))
             CALL GR_PRODUCTION(output_layer(1, k), output_layer(2, k), &
-&                        pn(k), en(k), ac_cp(k), beta, ac_hp(k), pr, &
-&                        perc)
+&                        pn(k), en(k), imperviousness, ac_cp(k), beta, &
+&                        ac_hp(k), pr, perc, ps, es)
             CALL GR_EXCHANGE(output_layer(4, k), ac_kexc(k), ac_ht(k), l&
 &                     )
             CALL PUSHCONTROL1B(1)
@@ -15458,14 +16323,18 @@ CONTAINS
             CALL GR_EXCHANGE_B(output_layer(4, k), output_layer_b(4, k)&
 &                        , ac_kexc(k), ac_kexc_b(k), ac_ht(k), ac_ht_b(k&
 &                        ), l, l_b)
+            imperviousness = input_data%physio_data%imperviousness(row, &
+&             col)
+            CALL POPREAL4(pn(k))
             CALL POPREAL4(ac_hp(k))
             CALL POPREAL4(pr)
             CALL POPREAL4(perc)
             CALL GR_PRODUCTION_B(output_layer(1, k), output_layer_b(1, k&
 &                          ), output_layer(2, k), output_layer_b(2, k), &
-&                          pn(k), pn_b(k), en(k), en_b(k), ac_cp(k), &
-&                          ac_cp_b(k), beta, ac_hp(k), ac_hp_b(k), pr, &
-&                          pr_b, perc, perc_b)
+&                          pn(k), pn_b(k), en(k), en_b(k), &
+&                          imperviousness, ac_cp(k), ac_cp_b(k), beta, &
+&                          ac_hp(k), ac_hp_b(k), pr, pr_b, perc, perc_b&
+&                          , ps, es)
           END IF
           CALL POPINTEGER4(k)
         END IF
@@ -15548,7 +16417,8 @@ CONTAINS
 &   output_layer
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pr, perc, l, prr, prd, qr, qd
+    REAL(sp) :: beta, imperviousness, pr, perc, ps, es, l, prr, prd, qr&
+&   , qd
     INTRINSIC MAX
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
 &                              , 'prcp', ac_prcp)
@@ -15596,10 +16466,12 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_PRODUCTION(output_layer(1, k), output_layer(2, k), &
-&                        pn(k), en(k), ac_cp(k), beta, ac_hp(k), pr, &
-&                        perc)
+&                        pn(k), en(k), imperviousness, ac_cp(k), beta, &
+&                        ac_hp(k), pr, perc, ps, es)
             CALL GR_EXCHANGE(output_layer(4, k), ac_kexc(k), ac_ht(k), l&
 &                     )
           ELSE
@@ -15660,7 +16532,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pn, en, pr, perc, l, prr, prd, qr, qd, split
+    REAL(sp) :: beta, pn, en, imperviousness, pr, perc, ps, es, l, prr, &
+&   prd, qr, qd, split
     REAL(sp) :: pn_d, en_d, pr_d, perc_d, l_d, prr_d, prd_d, qr_d, qd_d&
 &   , split_d
     INTRINSIC TANH
@@ -15680,14 +16553,16 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_INTERCEPTION_D(ac_prcp(k), ac_prcp_d(k), ac_pet(k), &
 &                            ac_ci(k), ac_ci_d(k), ac_hi(k), ac_hi_d(k)&
 &                            , pn, pn_d, en, en_d)
-            CALL GR_RI_PRODUCTION_D(pn, pn_d, en, en_d, ac_cp(k), &
-&                             ac_cp_d(k), beta, ac_alpha1(k), &
+            CALL GR_RI_PRODUCTION_D(pn, pn_d, en, en_d, imperviousness, &
+&                             ac_cp(k), ac_cp_d(k), beta, ac_alpha1(k), &
 &                             ac_alpha1_d(k), ac_hp(k), ac_hp_d(k), pr, &
-&                             pr_d, perc, perc_d, setup%dt)
+&                             pr_d, perc, perc_d, ps, es, setup%dt)
             CALL GR_EXCHANGE_D(0._sp, 0.0_4, ac_kexc(k), ac_kexc_d(k), &
 &                        ac_ht(k), ac_ht_d(k), l, l_d)
           ELSE
@@ -15758,7 +16633,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pn, en, pr, perc, l, prr, prd, qr, qd, split
+    REAL(sp) :: beta, pn, en, imperviousness, pr, perc, ps, es, l, prr, &
+&   prd, qr, qd, split
     REAL(sp) :: pn_b, en_b, pr_b, perc_b, l_b, prr_b, prd_b, qr_b, qd_b&
 &   , split_b
     INTRINSIC TANH
@@ -15780,6 +16656,8 @@ CONTAINS
           CALL PUSHCONTROL1B(0)
         ELSE
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL PUSHREAL4(en)
             CALL PUSHREAL4(pn)
@@ -15789,8 +16667,10 @@ CONTAINS
             CALL PUSHREAL4(perc)
             CALL PUSHREAL4(pr)
             CALL PUSHREAL4(ac_hp(k))
-            CALL GR_RI_PRODUCTION(pn, en, ac_cp(k), beta, ac_alpha1(k), &
-&                           ac_hp(k), pr, perc, setup%dt)
+            CALL PUSHREAL4(pn)
+            CALL GR_RI_PRODUCTION(pn, en, imperviousness, ac_cp(k), beta&
+&                           , ac_alpha1(k), ac_hp(k), pr, perc, ps, es, &
+&                           setup%dt)
             CALL GR_EXCHANGE(0._sp, ac_kexc(k), ac_ht(k), l)
             CALL PUSHCONTROL1B(1)
           ELSE
@@ -15858,13 +16738,16 @@ CONTAINS
           ELSE
             CALL GR_EXCHANGE_B(0._sp, dummydiff_b, ac_kexc(k), ac_kexc_b&
 &                        (k), ac_ht(k), ac_ht_b(k), l, l_b)
+            imperviousness = input_data%physio_data%imperviousness(row, &
+&             col)
+            CALL POPREAL4(pn)
             CALL POPREAL4(ac_hp(k))
             CALL POPREAL4(pr)
             CALL POPREAL4(perc)
-            CALL GR_RI_PRODUCTION_B(pn, pn_b, en, en_b, ac_cp(k), &
-&                             ac_cp_b(k), beta, ac_alpha1(k), &
+            CALL GR_RI_PRODUCTION_B(pn, pn_b, en, en_b, imperviousness, &
+&                             ac_cp(k), ac_cp_b(k), beta, ac_alpha1(k), &
 &                             ac_alpha1_b(k), ac_hp(k), ac_hp_b(k), pr, &
-&                             pr_b, perc, perc_b, setup%dt)
+&                             pr_b, perc, perc_b, ps, es, setup%dt)
             CALL POPREAL4(ac_hi(k))
             CALL POPREAL4(pn)
             CALL POPREAL4(en)
@@ -15897,7 +16780,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac), INTENT(INOUT) :: ac_qt
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pn, en, pr, perc, l, prr, prd, qr, qd, split
+    REAL(sp) :: beta, pn, en, imperviousness, pr, perc, ps, es, l, prr, &
+&   prd, qr, qd, split
     INTRINSIC TANH
     INTRINSIC MAX
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
@@ -15912,11 +16796,14 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_INTERCEPTION(ac_prcp(k), ac_pet(k), ac_ci(k), ac_hi(&
 &                          k), pn, en)
-            CALL GR_RI_PRODUCTION(pn, en, ac_cp(k), beta, ac_alpha1(k), &
-&                           ac_hp(k), pr, perc, setup%dt)
+            CALL GR_RI_PRODUCTION(pn, en, imperviousness, ac_cp(k), beta&
+&                           , ac_alpha1(k), ac_hp(k), pr, perc, ps, es, &
+&                           setup%dt)
             CALL GR_EXCHANGE(0._sp, ac_kexc(k), ac_ht(k), l)
           ELSE
             pr = 0._sp
@@ -15971,7 +16858,7 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d, pn_d, en_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: l
+    REAL(sp) :: imperviousness, l
     REAL(sp) :: temp
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
 &                              , 'prcp', ac_prcp)
@@ -16006,12 +16893,14 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           CALL GR_PRODUCTION_TRANSFER_ODE_D(pn(k), pn_d(k), en(k), en_d(&
-&                                     k), ac_cp(k), ac_cp_d(k), ac_ct(k)&
-&                                     , ac_ct_d(k), ac_kexc(k), &
-&                                     ac_kexc_d(k), ac_hp(k), ac_hp_d(k)&
-&                                     , ac_ht(k), ac_ht_d(k), ac_qt(k), &
-&                                     ac_qt_d(k), l)
+&                                     k), imperviousness, ac_cp(k), &
+&                                     ac_cp_d(k), ac_ct(k), ac_ct_d(k), &
+&                                     ac_kexc(k), ac_kexc_d(k), ac_hp(k)&
+&                                     , ac_hp_d(k), ac_ht(k), ac_ht_d(k)&
+&                                     , ac_qt(k), ac_qt_d(k), l)
 ! Transform from mm/dt to m3/s
           temp = 1e-3_sp*mesh%dx(row, col)*mesh%dy(row, col)
           ac_qt_d(k) = temp*ac_qt_d(k)/setup%dt
@@ -16051,7 +16940,7 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b, pn_b, en_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: l
+    REAL(sp) :: imperviousness, l
     INTEGER :: branch
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
 &                              , 'prcp', ac_prcp)
@@ -16087,12 +16976,15 @@ CONTAINS
           CALL PUSHCONTROL1B(0)
         ELSE
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           CALL PUSHREAL4(ac_qt(k))
           CALL PUSHREAL4(ac_ht(k))
           CALL PUSHREAL4(ac_hp(k))
-          CALL GR_PRODUCTION_TRANSFER_ODE(pn(k), en(k), ac_cp(k), ac_ct(&
-&                                   k), ac_kexc(k), ac_hp(k), ac_ht(k), &
-&                                   ac_qt(k), l)
+          CALL PUSHREAL4(pn(k))
+          CALL GR_PRODUCTION_TRANSFER_ODE(pn(k), en(k), imperviousness, &
+&                                   ac_cp(k), ac_ct(k), ac_kexc(k), &
+&                                   ac_hp(k), ac_ht(k), ac_qt(k), l)
 ! Transform from mm/dt to m3/s
           CALL PUSHCONTROL1B(1)
         END IF
@@ -16107,15 +16999,18 @@ CONTAINS
           k = mesh%rowcol_to_ind_ac(row, col)
           ac_qt_b(k) = mesh%dx(row, col)*1e-3_sp*mesh%dy(row, col)*&
 &           ac_qt_b(k)/setup%dt
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
+          CALL POPREAL4(pn(k))
           CALL POPREAL4(ac_hp(k))
           CALL POPREAL4(ac_ht(k))
           CALL POPREAL4(ac_qt(k))
           CALL GR_PRODUCTION_TRANSFER_ODE_B(pn(k), pn_b(k), en(k), en_b(&
-&                                     k), ac_cp(k), ac_cp_b(k), ac_ct(k)&
-&                                     , ac_ct_b(k), ac_kexc(k), &
-&                                     ac_kexc_b(k), ac_hp(k), ac_hp_b(k)&
-&                                     , ac_ht(k), ac_ht_b(k), ac_qt(k), &
-&                                     ac_qt_b(k), l)
+&                                     k), imperviousness, ac_cp(k), &
+&                                     ac_cp_b(k), ac_ct(k), ac_ct_b(k), &
+&                                     ac_kexc(k), ac_kexc_b(k), ac_hp(k)&
+&                                     , ac_hp_b(k), ac_ht(k), ac_ht_b(k)&
+&                                     , ac_qt(k), ac_qt_b(k), l)
           ac_qt_b(k) = 0.0_4
         END IF
       END DO
@@ -16161,7 +17056,7 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac), INTENT(INOUT) :: ac_qt
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: l
+    REAL(sp) :: imperviousness, l
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
 &                              , 'prcp', ac_prcp)
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
@@ -16189,9 +17084,11 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
-          CALL GR_PRODUCTION_TRANSFER_ODE(pn(k), en(k), ac_cp(k), ac_ct(&
-&                                   k), ac_kexc(k), ac_hp(k), ac_ht(k), &
-&                                   ac_qt(k), l)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
+          CALL GR_PRODUCTION_TRANSFER_ODE(pn(k), en(k), imperviousness, &
+&                                   ac_cp(k), ac_ct(k), ac_kexc(k), &
+&                                   ac_hp(k), ac_ht(k), ac_qt(k), l)
 ! Transform from mm/dt to m3/s
           ac_qt(k) = ac_qt(k)*1e-3_sp*mesh%dx(row, col)*mesh%dy(row, col&
 &           )/setup%dt
@@ -16253,10 +17150,18 @@ CONTAINS
 &   output_layer
     REAL(sp), DIMENSION(setup%neurons(setup%n_layers+1), mesh%nac) :: &
 &   output_layer_d
+    REAL(sp), DIMENSION(setup%neurons(setup%n_layers+1), mesh%nac) :: &
+&   output_jacobian_1
+    REAL(sp), DIMENSION(setup%neurons(setup%n_layers+1), mesh%nac) :: &
+&   output_jacobian_1_d
+    REAL(sp), DIMENSION(setup%neurons(setup%n_layers+1), mesh%nac) :: &
+&   output_jacobian_2
+    REAL(sp), DIMENSION(setup%neurons(setup%n_layers+1), mesh%nac) :: &
+&   output_jacobian_2_d
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d, pn_d, en_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: l
+    REAL(sp) :: imperviousness, l
     REAL(sp) :: temp
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
 &                              , 'prcp', ac_prcp)
@@ -16285,6 +17190,8 @@ CONTAINS
         END IF
       END DO
     END DO
+    output_jacobian_1_d = 0.0_4
+    output_jacobian_2_d = 0.0_4
     output_layer_d = 0.0_4
 ! Forward MLP without OPENMP
     DO col=1,mesh%ncol
@@ -16296,32 +17203,48 @@ CONTAINS
             input_layer_d(:) = (/ac_hp_d(k), ac_ht_d(k), pn_d(k), en_d(k&
 &             )/)
             input_layer(:) = (/ac_hp(k), ac_ht(k), pn(k), en(k)/)
-            CALL FORWARD_MLP_D(weight_1, weight_1_d, bias_1, bias_1_d, &
-&                        weight_2, weight_2_d, bias_2, bias_2_d, &
-&                        weight_3, weight_3_d, bias_3, bias_3_d, &
-&                        input_layer, input_layer_d, output_layer(:, k)&
-&                        , output_layer_d(:, k))
+            CALL FORWARD_AND_BACKWARD_MLP_D(weight_1, weight_1_d, bias_1&
+&                                     , bias_1_d, weight_2, weight_2_d, &
+&                                     bias_2, bias_2_d, weight_3, &
+&                                     weight_3_d, bias_3, bias_3_d, &
+&                                     input_layer, input_layer_d, &
+&                                     output_layer(:, k), output_layer_d&
+&                                     (:, k), output_jacobian_1(:, k), &
+&                                     output_jacobian_1_d(:, k), &
+&                                     output_jacobian_2(:, k), &
+&                                     output_jacobian_2_d(:, k))
           ELSE
             output_layer_d(:, k) = 0.0_4
             output_layer(:, k) = 0._sp
+            output_jacobian_1_d(:, k) = 0.0_4
+            output_jacobian_1(:, k) = 0._sp
+            output_jacobian_2_d(:, k) = 0.0_4
+            output_jacobian_2(:, k) = 0._sp
           END IF
         END IF
       END DO
     END DO
-! Production and transfer with OPENMP
+! Production and transfer without OPENMP
     DO col=1,mesh%ncol
       DO row=1,mesh%nrow
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           CALL GR_PRODUCTION_TRANSFER_ODE_MLP_D(output_layer(:, k), &
-&                                         output_layer_d(:, k), pn(k), &
-&                                         pn_d(k), en(k), en_d(k), ac_cp&
-&                                         (k), ac_cp_d(k), ac_ct(k), &
-&                                         ac_ct_d(k), ac_kexc(k), &
-&                                         ac_kexc_d(k), ac_hp(k), &
-&                                         ac_hp_d(k), ac_ht(k), ac_ht_d(&
-&                                         k), ac_qt(k), ac_qt_d(k), l)
+&                                         output_layer_d(:, k), &
+&                                         output_jacobian_1(:, k), &
+&                                         output_jacobian_1_d(:, k), &
+&                                         output_jacobian_2(:, k), &
+&                                         output_jacobian_2_d(:, k), pn(&
+&                                         k), pn_d(k), en(k), en_d(k), &
+&                                         imperviousness, ac_cp(k), &
+&                                         ac_cp_d(k), ac_ct(k), ac_ct_d(&
+&                                         k), ac_kexc(k), ac_kexc_d(k), &
+&                                         ac_hp(k), ac_hp_d(k), ac_ht(k)&
+&                                         , ac_ht_d(k), ac_qt(k), &
+&                                         ac_qt_d(k), l)
 ! Transform from mm/dt to m3/s
           temp = 1e-3_sp*mesh%dx(row, col)*mesh%dy(row, col)
           ac_qt_d(k) = temp*ac_qt_d(k)/setup%dt
@@ -16386,10 +17309,18 @@ CONTAINS
 &   output_layer
     REAL(sp), DIMENSION(setup%neurons(setup%n_layers+1), mesh%nac) :: &
 &   output_layer_b
+    REAL(sp), DIMENSION(setup%neurons(setup%n_layers+1), mesh%nac) :: &
+&   output_jacobian_1
+    REAL(sp), DIMENSION(setup%neurons(setup%n_layers+1), mesh%nac) :: &
+&   output_jacobian_1_b
+    REAL(sp), DIMENSION(setup%neurons(setup%n_layers+1), mesh%nac) :: &
+&   output_jacobian_2
+    REAL(sp), DIMENSION(setup%neurons(setup%n_layers+1), mesh%nac) :: &
+&   output_jacobian_2_b
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b, pn_b, en_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: l
+    REAL(sp) :: imperviousness, l
     INTEGER :: branch
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
 &                              , 'prcp', ac_prcp)
@@ -16428,18 +17359,22 @@ CONTAINS
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL PUSHREAL4ARRAY(input_layer, setup%neurons(1))
             input_layer(:) = (/ac_hp(k), ac_ht(k), pn(k), en(k)/)
-            CALL FORWARD_MLP(weight_1, bias_1, weight_2, bias_2, &
-&                      weight_3, bias_3, input_layer, output_layer(:, k)&
-&                     )
+            CALL FORWARD_AND_BACKWARD_MLP(weight_1, bias_1, weight_2, &
+&                                   bias_2, weight_3, bias_3, &
+&                                   input_layer, output_layer(:, k), &
+&                                   output_jacobian_1(:, k), &
+&                                   output_jacobian_2(:, k))
             CALL PUSHCONTROL2B(2)
           ELSE
             output_layer(:, k) = 0._sp
+            output_jacobian_1(:, k) = 0._sp
+            output_jacobian_2(:, k) = 0._sp
             CALL PUSHCONTROL2B(1)
           END IF
         END IF
       END DO
     END DO
-! Production and transfer with OPENMP
+! Production and transfer without OPENMP
     DO col=1,mesh%ncol
       DO row=1,mesh%nrow
         IF (mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
@@ -16447,18 +17382,25 @@ CONTAINS
           CALL PUSHCONTROL1B(0)
         ELSE
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           CALL PUSHREAL4(ac_qt(k))
           CALL PUSHREAL4(ac_ht(k))
           CALL PUSHREAL4(ac_hp(k))
-          CALL GR_PRODUCTION_TRANSFER_ODE_MLP(output_layer(:, k), pn(k)&
-&                                       , en(k), ac_cp(k), ac_ct(k), &
-&                                       ac_kexc(k), ac_hp(k), ac_ht(k), &
-&                                       ac_qt(k), l)
+          CALL PUSHREAL4(pn(k))
+          CALL GR_PRODUCTION_TRANSFER_ODE_MLP(output_layer(:, k), &
+&                                       output_jacobian_1(:, k), &
+&                                       output_jacobian_2(:, k), pn(k), &
+&                                       en(k), imperviousness, ac_cp(k)&
+&                                       , ac_ct(k), ac_kexc(k), ac_hp(k)&
+&                                       , ac_ht(k), ac_qt(k), l)
 ! Transform from mm/dt to m3/s
           CALL PUSHCONTROL1B(1)
         END IF
       END DO
     END DO
+    output_jacobian_1_b = 0.0_4
+    output_jacobian_2_b = 0.0_4
     output_layer_b = 0.0_4
     en_b = 0.0_4
     pn_b = 0.0_4
@@ -16469,17 +17411,25 @@ CONTAINS
           k = mesh%rowcol_to_ind_ac(row, col)
           ac_qt_b(k) = mesh%dx(row, col)*1e-3_sp*mesh%dy(row, col)*&
 &           ac_qt_b(k)/setup%dt
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
+          CALL POPREAL4(pn(k))
           CALL POPREAL4(ac_hp(k))
           CALL POPREAL4(ac_ht(k))
           CALL POPREAL4(ac_qt(k))
           CALL GR_PRODUCTION_TRANSFER_ODE_MLP_B(output_layer(:, k), &
-&                                         output_layer_b(:, k), pn(k), &
-&                                         pn_b(k), en(k), en_b(k), ac_cp&
-&                                         (k), ac_cp_b(k), ac_ct(k), &
-&                                         ac_ct_b(k), ac_kexc(k), &
-&                                         ac_kexc_b(k), ac_hp(k), &
-&                                         ac_hp_b(k), ac_ht(k), ac_ht_b(&
-&                                         k), ac_qt(k), ac_qt_b(k), l)
+&                                         output_layer_b(:, k), &
+&                                         output_jacobian_1(:, k), &
+&                                         output_jacobian_1_b(:, k), &
+&                                         output_jacobian_2(:, k), &
+&                                         output_jacobian_2_b(:, k), pn(&
+&                                         k), pn_b(k), en(k), en_b(k), &
+&                                         imperviousness, ac_cp(k), &
+&                                         ac_cp_b(k), ac_ct(k), ac_ct_b(&
+&                                         k), ac_kexc(k), ac_kexc_b(k), &
+&                                         ac_hp(k), ac_hp_b(k), ac_ht(k)&
+&                                         , ac_ht_b(k), ac_qt(k), &
+&                                         ac_qt_b(k), l)
           ac_qt_b(k) = 0.0_4
         END IF
       END DO
@@ -16490,15 +17440,24 @@ CONTAINS
         IF (branch .NE. 0) THEN
           IF (branch .EQ. 1) THEN
             k = mesh%rowcol_to_ind_ac(row, col)
+            output_jacobian_2_b(:, k) = 0.0_4
+            output_jacobian_1_b(:, k) = 0.0_4
             output_layer_b(:, k) = 0.0_4
           ELSE
             k = mesh%rowcol_to_ind_ac(row, col)
-            CALL FORWARD_MLP_B(weight_1, weight_1_b, bias_1, bias_1_b, &
-&                        weight_2, weight_2_b, bias_2, bias_2_b, &
-&                        weight_3, weight_3_b, bias_3, bias_3_b, &
-&                        input_layer, input_layer_b, output_layer(:, k)&
-&                        , output_layer_b(:, k))
+            CALL FORWARD_AND_BACKWARD_MLP_B(weight_1, weight_1_b, bias_1&
+&                                     , bias_1_b, weight_2, weight_2_b, &
+&                                     bias_2, bias_2_b, weight_3, &
+&                                     weight_3_b, bias_3, bias_3_b, &
+&                                     input_layer, input_layer_b, &
+&                                     output_layer(:, k), output_layer_b&
+&                                     (:, k), output_jacobian_1(:, k), &
+&                                     output_jacobian_1_b(:, k), &
+&                                     output_jacobian_2(:, k), &
+&                                     output_jacobian_2_b(:, k))
             output_layer_b(:, k) = 0.0_4
+            output_jacobian_1_b(:, k) = 0.0_4
+            output_jacobian_2_b(:, k) = 0.0_4
             CALL POPREAL4ARRAY(input_layer, setup%neurons(1))
             ac_hp_b(k) = ac_hp_b(k) + input_layer_b(1)
             ac_ht_b(k) = ac_ht_b(k) + input_layer_b(2)
@@ -16560,9 +17519,13 @@ CONTAINS
     REAL(sp), DIMENSION(setup%neurons(1)) :: input_layer
     REAL(sp), DIMENSION(setup%neurons(setup%n_layers+1), mesh%nac) :: &
 &   output_layer
+    REAL(sp), DIMENSION(setup%neurons(setup%n_layers+1), mesh%nac) :: &
+&   output_jacobian_1
+    REAL(sp), DIMENSION(setup%neurons(setup%n_layers+1), mesh%nac) :: &
+&   output_jacobian_2
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: l
+    REAL(sp) :: imperviousness, l
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
 &                              , 'prcp', ac_prcp)
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
@@ -16592,25 +17555,33 @@ CONTAINS
           k = mesh%rowcol_to_ind_ac(row, col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             input_layer(:) = (/ac_hp(k), ac_ht(k), pn(k), en(k)/)
-            CALL FORWARD_MLP(weight_1, bias_1, weight_2, bias_2, &
-&                      weight_3, bias_3, input_layer, output_layer(:, k)&
-&                     )
+            CALL FORWARD_AND_BACKWARD_MLP(weight_1, bias_1, weight_2, &
+&                                   bias_2, weight_3, bias_3, &
+&                                   input_layer, output_layer(:, k), &
+&                                   output_jacobian_1(:, k), &
+&                                   output_jacobian_2(:, k))
           ELSE
             output_layer(:, k) = 0._sp
+            output_jacobian_1(:, k) = 0._sp
+            output_jacobian_2(:, k) = 0._sp
           END IF
         END IF
       END DO
     END DO
-! Production and transfer with OPENMP
+! Production and transfer without OPENMP
     DO col=1,mesh%ncol
       DO row=1,mesh%nrow
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
-          CALL GR_PRODUCTION_TRANSFER_ODE_MLP(output_layer(:, k), pn(k)&
-&                                       , en(k), ac_cp(k), ac_ct(k), &
-&                                       ac_kexc(k), ac_hp(k), ac_ht(k), &
-&                                       ac_qt(k), l)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
+          CALL GR_PRODUCTION_TRANSFER_ODE_MLP(output_layer(:, k), &
+&                                       output_jacobian_1(:, k), &
+&                                       output_jacobian_2(:, k), pn(k), &
+&                                       en(k), imperviousness, ac_cp(k)&
+&                                       , ac_ct(k), ac_kexc(k), ac_hp(k)&
+&                                       , ac_ht(k), ac_qt(k), l)
 ! Transform from mm/dt to m3/s
           ac_qt(k) = ac_qt(k)*1e-3_sp*mesh%dx(row, col)*mesh%dy(row, col&
 &           )/setup%dt
@@ -16648,7 +17619,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pn, en, pr, perc, l, prr, prd, qr, qd
+    REAL(sp) :: beta, pn, en, imperviousness, pr, perc, ps, es, l, prr, &
+&   prd, qr, qd
     REAL(sp) :: pn_d, en_d, pr_d, perc_d, l_d, prr_d, prd_d, qr_d, qd_d
     INTRINSIC MAX
     REAL(sp) :: temp
@@ -16665,13 +17637,16 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_INTERCEPTION_D(ac_prcp(k), ac_prcp_d(k), ac_pet(k), &
 &                            ac_ci(k), ac_ci_d(k), ac_hi(k), ac_hi_d(k)&
 &                            , pn, pn_d, en, en_d)
             CALL GR_PRODUCTION_D(0._sp, 0.0_4, 0._sp, 0.0_4, pn, pn_d, &
-&                          en, en_d, ac_cp(k), ac_cp_d(k), beta, ac_hp(k&
-&                          ), ac_hp_d(k), pr, pr_d, perc, perc_d)
+&                          en, en_d, imperviousness, ac_cp(k), ac_cp_d(k&
+&                          ), beta, ac_hp(k), ac_hp_d(k), pr, pr_d, perc&
+&                          , perc_d, ps, es)
             CALL GR_THRESHOLD_EXCHANGE_D(0._sp, 0.0_4, ac_kexc(k), &
 &                                  ac_kexc_d(k), ac_aexc(k), ac_aexc_d(k&
 &                                  ), ac_ht(k), ac_ht_d(k), l, l_d)
@@ -16737,7 +17712,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pn, en, pr, perc, l, prr, prd, qr, qd
+    REAL(sp) :: beta, pn, en, imperviousness, pr, perc, ps, es, l, prr, &
+&   prd, qr, qd
     REAL(sp) :: pn_b, en_b, pr_b, perc_b, l_b, prr_b, prd_b, qr_b, qd_b
     INTRINSIC MAX
     REAL(sp) :: dummydiff_b
@@ -16758,15 +17734,17 @@ CONTAINS
           CALL PUSHCONTROL1B(0)
         ELSE
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL PUSHREAL4(en)
-            CALL PUSHREAL4(pn)
             CALL PUSHREAL4(ac_hi(k))
             CALL GR_INTERCEPTION(ac_prcp(k), ac_pet(k), ac_ci(k), ac_hi(&
 &                          k), pn, en)
             CALL PUSHREAL4(ac_hp(k))
-            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, ac_cp(k), beta, &
-&                        ac_hp(k), pr, perc)
+            CALL PUSHREAL4(pn)
+            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, imperviousness, &
+&                        ac_cp(k), beta, ac_hp(k), pr, perc, ps, es)
             CALL GR_THRESHOLD_EXCHANGE(0._sp, ac_kexc(k), ac_aexc(k), &
 &                                ac_ht(k), l)
             CALL PUSHCONTROL1B(1)
@@ -16822,15 +17800,17 @@ CONTAINS
             CALL GR_THRESHOLD_EXCHANGE_B(0._sp, dummydiff_b1, ac_kexc(k)&
 &                                  , ac_kexc_b(k), ac_aexc(k), ac_aexc_b&
 &                                  (k), ac_ht(k), ac_ht_b(k), l, l_b)
+            imperviousness = input_data%physio_data%imperviousness(row, &
+&             col)
+            CALL POPREAL4(pn)
             CALL POPREAL4(ac_hp(k))
             pn_b = 0.0_4
             en_b = 0.0_4
             CALL GR_PRODUCTION_B(0._sp, dummydiff_b, 0._sp, dummydiff_b0&
-&                          , pn, pn_b, en, en_b, ac_cp(k), ac_cp_b(k), &
-&                          beta, ac_hp(k), ac_hp_b(k), pr, pr_b, perc, &
-&                          perc_b)
+&                          , pn, pn_b, en, en_b, imperviousness, ac_cp(k&
+&                          ), ac_cp_b(k), beta, ac_hp(k), ac_hp_b(k), pr&
+&                          , pr_b, perc, perc_b, ps, es)
             CALL POPREAL4(ac_hi(k))
-            CALL POPREAL4(pn)
             CALL POPREAL4(en)
             CALL GR_INTERCEPTION_B(ac_prcp(k), ac_prcp_b(k), ac_pet(k), &
 &                            ac_ci(k), ac_ci_b(k), ac_hi(k), ac_hi_b(k)&
@@ -16859,7 +17839,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac), INTENT(INOUT) :: ac_qt
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pn, en, pr, perc, l, prr, prd, qr, qd
+    REAL(sp) :: beta, pn, en, imperviousness, pr, perc, ps, es, l, prr, &
+&   prd, qr, qd
     INTRINSIC MAX
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
 &                              , 'prcp', ac_prcp)
@@ -16873,11 +17854,13 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_INTERCEPTION(ac_prcp(k), ac_pet(k), ac_ci(k), ac_hi(&
 &                          k), pn, en)
-            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, ac_cp(k), beta, &
-&                        ac_hp(k), pr, perc)
+            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, imperviousness, &
+&                        ac_cp(k), beta, ac_hp(k), pr, perc, ps, es)
             CALL GR_THRESHOLD_EXCHANGE(0._sp, ac_kexc(k), ac_aexc(k), &
 &                                ac_ht(k), l)
           ELSE
@@ -16959,7 +17942,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d, pn_d, en_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pr, perc, l, prr, prd, qr, qd
+    REAL(sp) :: beta, imperviousness, pr, perc, ps, es, l, prr, prd, qr&
+&   , qd
     REAL(sp) :: pr_d, perc_d, l_d, prr_d, prd_d, qr_d, qd_d
     INTRINSIC MAX
     REAL(sp) :: temp
@@ -17021,12 +18005,15 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_PRODUCTION_D(output_layer(1, k), output_layer_d(1, k&
 &                          ), output_layer(2, k), output_layer_d(2, k), &
-&                          pn(k), pn_d(k), en(k), en_d(k), ac_cp(k), &
-&                          ac_cp_d(k), beta, ac_hp(k), ac_hp_d(k), pr, &
-&                          pr_d, perc, perc_d)
+&                          pn(k), pn_d(k), en(k), en_d(k), &
+&                          imperviousness, ac_cp(k), ac_cp_d(k), beta, &
+&                          ac_hp(k), ac_hp_d(k), pr, pr_d, perc, perc_d&
+&                          , ps, es)
             CALL GR_THRESHOLD_EXCHANGE_D(output_layer(4, k), &
 &                                  output_layer_d(4, k), ac_kexc(k), &
 &                                  ac_kexc_d(k), ac_aexc(k), ac_aexc_d(k&
@@ -17127,7 +18114,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b, pn_b, en_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pr, perc, l, prr, prd, qr, qd
+    REAL(sp) :: beta, imperviousness, pr, perc, ps, es, l, prr, prd, qr&
+&   , qd
     REAL(sp) :: pr_b, perc_b, l_b, prr_b, prd_b, qr_b, qd_b
     INTRINSIC MAX
     REAL(sp) :: temp_b
@@ -17191,13 +18179,16 @@ CONTAINS
         ELSE
           CALL PUSHINTEGER4(k)
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL PUSHREAL4(perc)
             CALL PUSHREAL4(pr)
             CALL PUSHREAL4(ac_hp(k))
+            CALL PUSHREAL4(pn(k))
             CALL GR_PRODUCTION(output_layer(1, k), output_layer(2, k), &
-&                        pn(k), en(k), ac_cp(k), beta, ac_hp(k), pr, &
-&                        perc)
+&                        pn(k), en(k), imperviousness, ac_cp(k), beta, &
+&                        ac_hp(k), pr, perc, ps, es)
             CALL GR_THRESHOLD_EXCHANGE(output_layer(4, k), ac_kexc(k), &
 &                                ac_aexc(k), ac_ht(k), l)
             CALL PUSHCONTROL1B(1)
@@ -17269,14 +18260,18 @@ CONTAINS
 &                                  output_layer_b(4, k), ac_kexc(k), &
 &                                  ac_kexc_b(k), ac_aexc(k), ac_aexc_b(k&
 &                                  ), ac_ht(k), ac_ht_b(k), l, l_b)
+            imperviousness = input_data%physio_data%imperviousness(row, &
+&             col)
+            CALL POPREAL4(pn(k))
             CALL POPREAL4(ac_hp(k))
             CALL POPREAL4(pr)
             CALL POPREAL4(perc)
             CALL GR_PRODUCTION_B(output_layer(1, k), output_layer_b(1, k&
 &                          ), output_layer(2, k), output_layer_b(2, k), &
-&                          pn(k), pn_b(k), en(k), en_b(k), ac_cp(k), &
-&                          ac_cp_b(k), beta, ac_hp(k), ac_hp_b(k), pr, &
-&                          pr_b, perc, perc_b)
+&                          pn(k), pn_b(k), en(k), en_b(k), &
+&                          imperviousness, ac_cp(k), ac_cp_b(k), beta, &
+&                          ac_hp(k), ac_hp_b(k), pr, pr_b, perc, perc_b&
+&                          , ps, es)
           END IF
           CALL POPINTEGER4(k)
         END IF
@@ -17360,7 +18355,8 @@ CONTAINS
 &   output_layer
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pr, perc, l, prr, prd, qr, qd
+    REAL(sp) :: beta, imperviousness, pr, perc, ps, es, l, prr, prd, qr&
+&   , qd
     INTRINSIC MAX
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
 &                              , 'prcp', ac_prcp)
@@ -17408,10 +18404,12 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_PRODUCTION(output_layer(1, k), output_layer(2, k), &
-&                        pn(k), en(k), ac_cp(k), beta, ac_hp(k), pr, &
-&                        perc)
+&                        pn(k), en(k), imperviousness, ac_cp(k), beta, &
+&                        ac_hp(k), pr, perc, ps, es)
             CALL GR_THRESHOLD_EXCHANGE(output_layer(4, k), ac_kexc(k), &
 &                                ac_aexc(k), ac_ht(k), l)
           ELSE
@@ -17472,7 +18470,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pn, en, pr, perc, l, prr, prd, qr, qd, split
+    REAL(sp) :: beta, pn, en, imperviousness, pr, perc, ps, es, l, prr, &
+&   prd, qr, qd, split
     REAL(sp) :: pn_d, en_d, pr_d, perc_d, l_d, prr_d, prd_d, qr_d, qd_d&
 &   , split_d
     INTRINSIC TANH
@@ -17492,14 +18491,16 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_INTERCEPTION_D(ac_prcp(k), ac_prcp_d(k), ac_pet(k), &
 &                            ac_ci(k), ac_ci_d(k), ac_hi(k), ac_hi_d(k)&
 &                            , pn, pn_d, en, en_d)
-            CALL GR_RI_PRODUCTION_D(pn, pn_d, en, en_d, ac_cp(k), &
-&                             ac_cp_d(k), beta, ac_alpha1(k), &
+            CALL GR_RI_PRODUCTION_D(pn, pn_d, en, en_d, imperviousness, &
+&                             ac_cp(k), ac_cp_d(k), beta, ac_alpha1(k), &
 &                             ac_alpha1_d(k), ac_hp(k), ac_hp_d(k), pr, &
-&                             pr_d, perc, perc_d, setup%dt)
+&                             pr_d, perc, perc_d, ps, es, setup%dt)
             CALL GR_THRESHOLD_EXCHANGE_D(0._sp, 0.0_4, ac_kexc(k), &
 &                                  ac_kexc_d(k), ac_aexc(k), ac_aexc_d(k&
 &                                  ), ac_ht(k), ac_ht_d(k), l, l_d)
@@ -17571,7 +18572,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pn, en, pr, perc, l, prr, prd, qr, qd, split
+    REAL(sp) :: beta, pn, en, imperviousness, pr, perc, ps, es, l, prr, &
+&   prd, qr, qd, split
     REAL(sp) :: pn_b, en_b, pr_b, perc_b, l_b, prr_b, prd_b, qr_b, qd_b&
 &   , split_b
     INTRINSIC TANH
@@ -17593,6 +18595,8 @@ CONTAINS
           CALL PUSHCONTROL1B(0)
         ELSE
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL PUSHREAL4(en)
             CALL PUSHREAL4(pn)
@@ -17602,8 +18606,10 @@ CONTAINS
             CALL PUSHREAL4(perc)
             CALL PUSHREAL4(pr)
             CALL PUSHREAL4(ac_hp(k))
-            CALL GR_RI_PRODUCTION(pn, en, ac_cp(k), beta, ac_alpha1(k), &
-&                           ac_hp(k), pr, perc, setup%dt)
+            CALL PUSHREAL4(pn)
+            CALL GR_RI_PRODUCTION(pn, en, imperviousness, ac_cp(k), beta&
+&                           , ac_alpha1(k), ac_hp(k), pr, perc, ps, es, &
+&                           setup%dt)
             CALL GR_THRESHOLD_EXCHANGE(0._sp, ac_kexc(k), ac_aexc(k), &
 &                                ac_ht(k), l)
             CALL PUSHCONTROL1B(1)
@@ -17673,13 +18679,16 @@ CONTAINS
             CALL GR_THRESHOLD_EXCHANGE_B(0._sp, dummydiff_b, ac_kexc(k)&
 &                                  , ac_kexc_b(k), ac_aexc(k), ac_aexc_b&
 &                                  (k), ac_ht(k), ac_ht_b(k), l, l_b)
+            imperviousness = input_data%physio_data%imperviousness(row, &
+&             col)
+            CALL POPREAL4(pn)
             CALL POPREAL4(ac_hp(k))
             CALL POPREAL4(pr)
             CALL POPREAL4(perc)
-            CALL GR_RI_PRODUCTION_B(pn, pn_b, en, en_b, ac_cp(k), &
-&                             ac_cp_b(k), beta, ac_alpha1(k), &
+            CALL GR_RI_PRODUCTION_B(pn, pn_b, en, en_b, imperviousness, &
+&                             ac_cp(k), ac_cp_b(k), beta, ac_alpha1(k), &
 &                             ac_alpha1_b(k), ac_hp(k), ac_hp_b(k), pr, &
-&                             pr_b, perc, perc_b, setup%dt)
+&                             pr_b, perc, perc_b, ps, es, setup%dt)
             CALL POPREAL4(ac_hi(k))
             CALL POPREAL4(pn)
             CALL POPREAL4(en)
@@ -17712,7 +18721,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac), INTENT(INOUT) :: ac_qt
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pn, en, pr, perc, l, prr, prd, qr, qd, split
+    REAL(sp) :: beta, pn, en, imperviousness, pr, perc, ps, es, l, prr, &
+&   prd, qr, qd, split
     INTRINSIC TANH
     INTRINSIC MAX
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
@@ -17727,11 +18737,14 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_INTERCEPTION(ac_prcp(k), ac_pet(k), ac_ci(k), ac_hi(&
 &                          k), pn, en)
-            CALL GR_RI_PRODUCTION(pn, en, ac_cp(k), beta, ac_alpha1(k), &
-&                           ac_hp(k), pr, perc, setup%dt)
+            CALL GR_RI_PRODUCTION(pn, en, imperviousness, ac_cp(k), beta&
+&                           , ac_alpha1(k), ac_hp(k), pr, perc, ps, es, &
+&                           setup%dt)
             CALL GR_THRESHOLD_EXCHANGE(0._sp, ac_kexc(k), ac_aexc(k), &
 &                                ac_ht(k), l)
           ELSE
@@ -17789,7 +18802,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pn, en, pr, perc, l, prr, pre, prd, qr, qd, qe
+    REAL(sp) :: beta, pn, en, imperviousness, pr, perc, ps, es, l, prr, &
+&   pre, prd, qr, qd, qe
     REAL(sp) :: pn_d, en_d, pr_d, perc_d, l_d, prr_d, pre_d, prd_d, qr_d&
 &   , qd_d, qe_d
     INTRINSIC MAX
@@ -17807,13 +18821,16 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_INTERCEPTION_D(ac_prcp(k), ac_prcp_d(k), ac_pet(k), &
 &                            ac_ci(k), ac_ci_d(k), ac_hi(k), ac_hi_d(k)&
 &                            , pn, pn_d, en, en_d)
             CALL GR_PRODUCTION_D(0._sp, 0.0_4, 0._sp, 0.0_4, pn, pn_d, &
-&                          en, en_d, ac_cp(k), ac_cp_d(k), beta, ac_hp(k&
-&                          ), ac_hp_d(k), pr, pr_d, perc, perc_d)
+&                          en, en_d, imperviousness, ac_cp(k), ac_cp_d(k&
+&                          ), beta, ac_hp(k), ac_hp_d(k), pr, pr_d, perc&
+&                          , perc_d, ps, es)
             CALL GR_THRESHOLD_EXCHANGE_D(0._sp, 0.0_4, ac_kexc(k), &
 &                                  ac_kexc_d(k), ac_aexc(k), ac_aexc_d(k&
 &                                  ), ac_ht(k), ac_ht_d(k), l, l_d)
@@ -17885,7 +18902,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pn, en, pr, perc, l, prr, pre, prd, qr, qd, qe
+    REAL(sp) :: beta, pn, en, imperviousness, pr, perc, ps, es, l, prr, &
+&   pre, prd, qr, qd, qe
     REAL(sp) :: pn_b, en_b, pr_b, perc_b, l_b, prr_b, pre_b, prd_b, qr_b&
 &   , qd_b, qe_b
     INTRINSIC MAX
@@ -17908,15 +18926,17 @@ CONTAINS
           CALL PUSHCONTROL1B(0)
         ELSE
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL PUSHREAL4(en)
-            CALL PUSHREAL4(pn)
             CALL PUSHREAL4(ac_hi(k))
             CALL GR_INTERCEPTION(ac_prcp(k), ac_pet(k), ac_ci(k), ac_hi(&
 &                          k), pn, en)
             CALL PUSHREAL4(ac_hp(k))
-            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, ac_cp(k), beta, &
-&                        ac_hp(k), pr, perc)
+            CALL PUSHREAL4(pn)
+            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, imperviousness, &
+&                        ac_cp(k), beta, ac_hp(k), pr, perc, ps, es)
             CALL GR_THRESHOLD_EXCHANGE(0._sp, ac_kexc(k), ac_aexc(k), &
 &                                ac_ht(k), l)
             CALL PUSHCONTROL1B(1)
@@ -17985,15 +19005,17 @@ CONTAINS
             CALL GR_THRESHOLD_EXCHANGE_B(0._sp, dummydiff_b1, ac_kexc(k)&
 &                                  , ac_kexc_b(k), ac_aexc(k), ac_aexc_b&
 &                                  (k), ac_ht(k), ac_ht_b(k), l, l_b)
+            imperviousness = input_data%physio_data%imperviousness(row, &
+&             col)
+            CALL POPREAL4(pn)
             CALL POPREAL4(ac_hp(k))
             pn_b = 0.0_4
             en_b = 0.0_4
             CALL GR_PRODUCTION_B(0._sp, dummydiff_b, 0._sp, dummydiff_b0&
-&                          , pn, pn_b, en, en_b, ac_cp(k), ac_cp_b(k), &
-&                          beta, ac_hp(k), ac_hp_b(k), pr, pr_b, perc, &
-&                          perc_b)
+&                          , pn, pn_b, en, en_b, imperviousness, ac_cp(k&
+&                          ), ac_cp_b(k), beta, ac_hp(k), ac_hp_b(k), pr&
+&                          , pr_b, perc, perc_b, ps, es)
             CALL POPREAL4(ac_hi(k))
-            CALL POPREAL4(pn)
             CALL POPREAL4(en)
             CALL GR_INTERCEPTION_B(ac_prcp(k), ac_prcp_b(k), ac_pet(k), &
 &                            ac_ci(k), ac_ci_b(k), ac_hi(k), ac_hi_b(k)&
@@ -18023,7 +19045,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac), INTENT(INOUT) :: ac_qt
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pn, en, pr, perc, l, prr, pre, prd, qr, qd, qe
+    REAL(sp) :: beta, pn, en, imperviousness, pr, perc, ps, es, l, prr, &
+&   pre, prd, qr, qd, qe
     INTRINSIC MAX
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
 &                              , 'prcp', ac_prcp)
@@ -18037,11 +19060,13 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_INTERCEPTION(ac_prcp(k), ac_pet(k), ac_ci(k), ac_hi(&
 &                          k), pn, en)
-            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, ac_cp(k), beta, &
-&                        ac_hp(k), pr, perc)
+            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, imperviousness, &
+&                        ac_cp(k), beta, ac_hp(k), pr, perc, ps, es)
             CALL GR_THRESHOLD_EXCHANGE(0._sp, ac_kexc(k), ac_aexc(k), &
 &                                ac_ht(k), l)
           ELSE
@@ -18127,7 +19152,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d, pn_d, en_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pr, perc, l, prr, pre, prd, qr, qd, qe
+    REAL(sp) :: beta, imperviousness, pr, perc, ps, es, l, prr, pre, prd&
+&   , qr, qd, qe
     REAL(sp) :: pr_d, perc_d, l_d, prr_d, pre_d, prd_d, qr_d, qd_d, qe_d
     INTRINSIC MAX
     REAL(sp) :: temp
@@ -18191,12 +19217,15 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_PRODUCTION_D(output_layer(1, k), output_layer_d(1, k&
 &                          ), output_layer(2, k), output_layer_d(2, k), &
-&                          pn(k), pn_d(k), en(k), en_d(k), ac_cp(k), &
-&                          ac_cp_d(k), beta, ac_hp(k), ac_hp_d(k), pr, &
-&                          pr_d, perc, perc_d)
+&                          pn(k), pn_d(k), en(k), en_d(k), &
+&                          imperviousness, ac_cp(k), ac_cp_d(k), beta, &
+&                          ac_hp(k), ac_hp_d(k), pr, pr_d, perc, perc_d&
+&                          , ps, es)
             CALL GR_THRESHOLD_EXCHANGE_D(output_layer(5, k), &
 &                                  output_layer_d(5, k), ac_kexc(k), &
 &                                  ac_kexc_d(k), ac_aexc(k), ac_aexc_d(k&
@@ -18313,7 +19342,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b, pn_b, en_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pr, perc, l, prr, pre, prd, qr, qd, qe
+    REAL(sp) :: beta, imperviousness, pr, perc, ps, es, l, prr, pre, prd&
+&   , qr, qd, qe
     REAL(sp) :: pr_b, perc_b, l_b, prr_b, pre_b, prd_b, qr_b, qd_b, qe_b
     INTRINSIC MAX
     REAL(sp) :: temp_b
@@ -18381,13 +19411,16 @@ CONTAINS
         ELSE
           CALL PUSHINTEGER4(k)
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL PUSHREAL4(perc)
             CALL PUSHREAL4(pr)
             CALL PUSHREAL4(ac_hp(k))
+            CALL PUSHREAL4(pn(k))
             CALL GR_PRODUCTION(output_layer(1, k), output_layer(2, k), &
-&                        pn(k), en(k), ac_cp(k), beta, ac_hp(k), pr, &
-&                        perc)
+&                        pn(k), en(k), imperviousness, ac_cp(k), beta, &
+&                        ac_hp(k), pr, perc, ps, es)
             CALL GR_THRESHOLD_EXCHANGE(output_layer(5, k), ac_kexc(k), &
 &                                ac_aexc(k), ac_ht(k), l)
             CALL PUSHCONTROL1B(1)
@@ -18481,14 +19514,18 @@ CONTAINS
 &                                  output_layer_b(5, k), ac_kexc(k), &
 &                                  ac_kexc_b(k), ac_aexc(k), ac_aexc_b(k&
 &                                  ), ac_ht(k), ac_ht_b(k), l, l_b)
+            imperviousness = input_data%physio_data%imperviousness(row, &
+&             col)
+            CALL POPREAL4(pn(k))
             CALL POPREAL4(ac_hp(k))
             CALL POPREAL4(pr)
             CALL POPREAL4(perc)
             CALL GR_PRODUCTION_B(output_layer(1, k), output_layer_b(1, k&
 &                          ), output_layer(2, k), output_layer_b(2, k), &
-&                          pn(k), pn_b(k), en(k), en_b(k), ac_cp(k), &
-&                          ac_cp_b(k), beta, ac_hp(k), ac_hp_b(k), pr, &
-&                          pr_b, perc, perc_b)
+&                          pn(k), pn_b(k), en(k), en_b(k), &
+&                          imperviousness, ac_cp(k), ac_cp_b(k), beta, &
+&                          ac_hp(k), ac_hp_b(k), pr, pr_b, perc, perc_b&
+&                          , ps, es)
           END IF
           CALL POPINTEGER4(k)
         END IF
@@ -18574,7 +19611,8 @@ CONTAINS
 &   output_layer
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pr, perc, l, prr, pre, prd, qr, qd, qe
+    REAL(sp) :: beta, imperviousness, pr, perc, ps, es, l, prr, pre, prd&
+&   , qr, qd, qe
     INTRINSIC MAX
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
 &                              , 'prcp', ac_prcp)
@@ -18623,10 +19661,12 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_PRODUCTION(output_layer(1, k), output_layer(2, k), &
-&                        pn(k), en(k), ac_cp(k), beta, ac_hp(k), pr, &
-&                        perc)
+&                        pn(k), en(k), imperviousness, ac_cp(k), beta, &
+&                        ac_hp(k), pr, perc, ps, es)
             CALL GR_THRESHOLD_EXCHANGE(output_layer(5, k), ac_kexc(k), &
 &                                ac_aexc(k), ac_ht(k), l)
           ELSE
@@ -18691,7 +19731,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: pn, en, pr, perc, l, prr, prl, prd, qr, ql, qd
+    REAL(sp) :: pn, en, imperviousness, pr, perc, ps, es, l, prr, prl, &
+&   prd, qr, ql, qd
     REAL(sp) :: pn_d, en_d, pr_d, perc_d, l_d, prr_d, prl_d, prd_d, qr_d&
 &   , ql_d, qd_d
     INTRINSIC MAX
@@ -18707,13 +19748,16 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_INTERCEPTION_D(ac_prcp(k), ac_prcp_d(k), ac_pet(k), &
 &                            ac_ci(k), ac_ci_d(k), ac_hi(k), ac_hi_d(k)&
 &                            , pn, pn_d, en, en_d)
             CALL GR_PRODUCTION_D(0._sp, 0.0_4, 0._sp, 0.0_4, pn, pn_d, &
-&                          en, en_d, ac_cp(k), ac_cp_d(k), 1000._sp, &
-&                          ac_hp(k), ac_hp_d(k), pr, pr_d, perc, perc_d)
+&                          en, en_d, imperviousness, ac_cp(k), ac_cp_d(k&
+&                          ), 1000._sp, ac_hp(k), ac_hp_d(k), pr, pr_d, &
+&                          perc, perc_d, ps, es)
             CALL GR_EXCHANGE_D(0._sp, 0.0_4, ac_kexc(k), ac_kexc_d(k), &
 &                        ac_ht(k), ac_ht_d(k), l, l_d)
           ELSE
@@ -18726,8 +19770,8 @@ CONTAINS
           END IF
           prr_d = 0.9_sp*0.6_sp*(pr_d+perc_d) + l_d
           prr = 0.6_sp*0.9_sp*(pr+perc) + l
-          prl_d = 0.9_sp*0.4_sp*(pr_d+perc_d) + l_d
-          prl = 0.4_sp*0.9_sp*(pr+perc) + l
+          prl_d = 0.9_sp*0.4_sp*(pr_d+perc_d)
+          prl = 0.4_sp*0.9_sp*(pr+perc)
           prd_d = 0.1_sp*(pr_d+perc_d)
           prd = 0.1_sp*(pr+perc)
           CALL GR_TRANSFER_D(5._sp, ac_prcp(k), prr, prr_d, ac_ct(k), &
@@ -18783,7 +19827,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: pn, en, pr, perc, l, prr, prl, prd, qr, ql, qd
+    REAL(sp) :: pn, en, imperviousness, pr, perc, ps, es, l, prr, prl, &
+&   prd, qr, ql, qd
     REAL(sp) :: pn_b, en_b, pr_b, perc_b, l_b, prr_b, prl_b, prd_b, qr_b&
 &   , ql_b, qd_b
     INTRINSIC MAX
@@ -18804,15 +19849,17 @@ CONTAINS
           CALL PUSHCONTROL1B(0)
         ELSE
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL PUSHREAL4(en)
-            CALL PUSHREAL4(pn)
             CALL PUSHREAL4(ac_hi(k))
             CALL GR_INTERCEPTION(ac_prcp(k), ac_pet(k), ac_ci(k), ac_hi(&
 &                          k), pn, en)
             CALL PUSHREAL4(ac_hp(k))
-            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, ac_cp(k), 1000._sp&
-&                        , ac_hp(k), pr, perc)
+            CALL PUSHREAL4(pn)
+            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, imperviousness, &
+&                        ac_cp(k), 1000._sp, ac_hp(k), pr, perc, ps, es)
             CALL GR_EXCHANGE(0._sp, ac_kexc(k), ac_ht(k), l)
             CALL PUSHCONTROL1B(1)
           ELSE
@@ -18824,7 +19871,7 @@ CONTAINS
           CALL PUSHREAL4(prr)
           prr = 0.6_sp*0.9_sp*(pr+perc) + l
           CALL PUSHREAL4(prl)
-          prl = 0.4_sp*0.9_sp*(pr+perc) + l
+          prl = 0.4_sp*0.9_sp*(pr+perc)
           prd = 0.1_sp*(pr+perc)
           CALL PUSHREAL4(ac_ht(k))
           CALL GR_TRANSFER(5._sp, ac_prcp(k), prr, ac_ct(k), ac_ht(k), &
@@ -18871,24 +19918,26 @@ CONTAINS
           temp_b = 0.9_sp*0.4_sp*prl_b
           pr_b = 0.1_sp*prd_b + temp_b
           perc_b = 0.1_sp*prd_b + temp_b
-          l_b = l_b + prl_b + prr_b
           CALL POPREAL4(prr)
           temp_b = 0.9_sp*0.6_sp*prr_b
+          l_b = l_b + prr_b
           pr_b = pr_b + temp_b
           perc_b = perc_b + temp_b
           CALL POPCONTROL1B(branch)
           IF (branch .NE. 0) THEN
             CALL GR_EXCHANGE_B(0._sp, dummydiff_b1, ac_kexc(k), &
 &                        ac_kexc_b(k), ac_ht(k), ac_ht_b(k), l, l_b)
+            imperviousness = input_data%physio_data%imperviousness(row, &
+&             col)
+            CALL POPREAL4(pn)
             CALL POPREAL4(ac_hp(k))
             pn_b = 0.0_4
             en_b = 0.0_4
             CALL GR_PRODUCTION_B(0._sp, dummydiff_b, 0._sp, dummydiff_b0&
-&                          , pn, pn_b, en, en_b, ac_cp(k), ac_cp_b(k), &
-&                          1000._sp, ac_hp(k), ac_hp_b(k), pr, pr_b, &
-&                          perc, perc_b)
+&                          , pn, pn_b, en, en_b, imperviousness, ac_cp(k&
+&                          ), ac_cp_b(k), 1000._sp, ac_hp(k), ac_hp_b(k)&
+&                          , pr, pr_b, perc, perc_b, ps, es)
             CALL POPREAL4(ac_hi(k))
-            CALL POPREAL4(pn)
             CALL POPREAL4(en)
             CALL GR_INTERCEPTION_B(ac_prcp(k), ac_prcp_b(k), ac_pet(k), &
 &                            ac_ci(k), ac_ci_b(k), ac_hi(k), ac_hi_b(k)&
@@ -18918,7 +19967,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac), INTENT(INOUT) :: ac_qt
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: pn, en, pr, perc, l, prr, prl, prd, qr, ql, qd
+    REAL(sp) :: pn, en, imperviousness, pr, perc, ps, es, l, prr, prl, &
+&   prd, qr, ql, qd
     INTRINSIC MAX
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
 &                              , 'prcp', ac_prcp)
@@ -18930,11 +19980,13 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_INTERCEPTION(ac_prcp(k), ac_pet(k), ac_ci(k), ac_hi(&
 &                          k), pn, en)
-            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, ac_cp(k), 1000._sp&
-&                        , ac_hp(k), pr, perc)
+            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, imperviousness, &
+&                        ac_cp(k), 1000._sp, ac_hp(k), pr, perc, ps, es)
             CALL GR_EXCHANGE(0._sp, ac_kexc(k), ac_ht(k), l)
           ELSE
             pr = 0._sp
@@ -18942,7 +19994,7 @@ CONTAINS
             l = 0._sp
           END IF
           prr = 0.6_sp*0.9_sp*(pr+perc) + l
-          prl = 0.4_sp*0.9_sp*(pr+perc) + l
+          prl = 0.4_sp*0.9_sp*(pr+perc)
           prd = 0.1_sp*(pr+perc)
           CALL GR_TRANSFER(5._sp, ac_prcp(k), prr, ac_ct(k), ac_ht(k), &
 &                    qr)
@@ -19019,7 +20071,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d, pn_d, en_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: pr, perc, l, prr, prl, prd, qr, ql, qd
+    REAL(sp) :: imperviousness, pr, perc, ps, es, l, prr, prl, prd, qr, &
+&   ql, qd
     REAL(sp) :: pr_d, perc_d, l_d, prr_d, prl_d, prd_d, qr_d, ql_d, qd_d
     INTRINSIC MAX
     REAL(sp) :: temp
@@ -19081,12 +20134,15 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_PRODUCTION_D(output_layer(1, k), output_layer_d(1, k&
 &                          ), output_layer(2, k), output_layer_d(2, k), &
-&                          pn(k), pn_d(k), en(k), en_d(k), ac_cp(k), &
-&                          ac_cp_d(k), 1000._sp, ac_hp(k), ac_hp_d(k), &
-&                          pr, pr_d, perc, perc_d)
+&                          pn(k), pn_d(k), en(k), en_d(k), &
+&                          imperviousness, ac_cp(k), ac_cp_d(k), &
+&                          1000._sp, ac_hp(k), ac_hp_d(k), pr, pr_d, &
+&                          perc, perc_d, ps, es)
             CALL GR_EXCHANGE_D(output_layer(5, k), output_layer_d(5, k)&
 &                        , ac_kexc(k), ac_kexc_d(k), ac_ht(k), ac_ht_d(k&
 &                        ), l, l_d)
@@ -19112,8 +20168,8 @@ CONTAINS
           temp = (output_layer(4, k)+1._sp)*(pr+perc)
           prl_d = 0.9_sp*0.4_sp*(temp0*((pr+perc)*output_layer_d(4, k)+(&
 &           output_layer(4, k)+1._sp)*(pr_d+perc_d))-temp*2*output_layer&
-&           (3, k)*output_layer_d(3, k)) + l_d
-          prl = 0.9_sp*0.4_sp*(temp*temp0) + l
+&           (3, k)*output_layer_d(3, k))
+          prl = 0.9_sp*0.4_sp*(temp*temp0)
 ! Range of correction c0.1: (0, 10)
           temp0 = 0.9_sp*(output_layer(3, k)*output_layer(3, k)) + &
 &           0.1_sp
@@ -19201,7 +20257,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b, pn_b, en_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: pr, perc, l, prr, prl, prd, qr, ql, qd
+    REAL(sp) :: imperviousness, pr, perc, ps, es, l, prr, prl, prd, qr, &
+&   ql, qd
     REAL(sp) :: pr_b, perc_b, l_b, prr_b, prl_b, prd_b, qr_b, ql_b, qd_b
     INTRINSIC MAX
     REAL(sp) :: temp_b
@@ -19267,13 +20324,16 @@ CONTAINS
         ELSE
           CALL PUSHINTEGER4(k)
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL PUSHREAL4(perc)
             CALL PUSHREAL4(pr)
             CALL PUSHREAL4(ac_hp(k))
+            CALL PUSHREAL4(pn(k))
             CALL GR_PRODUCTION(output_layer(1, k), output_layer(2, k), &
-&                        pn(k), en(k), ac_cp(k), 1000._sp, ac_hp(k), pr&
-&                        , perc)
+&                        pn(k), en(k), imperviousness, ac_cp(k), &
+&                        1000._sp, ac_hp(k), pr, perc, ps, es)
             CALL GR_EXCHANGE(output_layer(5, k), ac_kexc(k), ac_ht(k), l&
 &                     )
             CALL PUSHCONTROL1B(1)
@@ -19292,9 +20352,8 @@ CONTAINS
 &           output_layer(3, k)**2))*(pr+perc) + l
 ! Range of correction c0.4: (0, 2)
 ! Range of correction c0.9: (1, 0)
-          CALL PUSHREAL4(prl)
           prl = 0.4_sp*(1._sp+output_layer(4, k))*(0.9_sp*(1._sp-&
-&           output_layer(3, k)**2))*(pr+perc) + l
+&           output_layer(3, k)**2))*(pr+perc)
 ! Range of correction c0.1: (0, 10)
           prd = (0.1_sp+0.9_sp*output_layer(3, k)**2)*(pr+perc)
           CALL PUSHREAL4(ac_ht(k))
@@ -19334,6 +20393,8 @@ CONTAINS
             prd_b = 0.0_4
           END IF
           temp = -(0.4_sp*output_layer(4, k)) + 0.6_sp
+          prl = 0.4_sp*(1._sp+output_layer(4, k))*(0.9_sp*(1._sp-&
+&           output_layer(3, k)**2))*(pr+perc)
           CALL POPREAL4(ac_hl(k))
           CALL GR_TRANSFER_B(5._sp, ac_prcp(k), prl, prl_b, ac_cl(k), &
 &                      ac_cl_b(k), ac_hl(k), ac_hl_b(k), ql, ql_b)
@@ -19343,13 +20404,11 @@ CONTAINS
           temp_b1 = (0.9_sp*output_layer(3, k)**2+0.1_sp)*prd_b
           pr_b = temp_b1
           perc_b = temp_b1
-          CALL POPREAL4(prl)
           temp_b0 = 0.9_sp*0.4_sp*prl_b
           output_layer_b(3, k) = output_layer_b(3, k) + 2*output_layer(3&
 &           , k)*0.9_sp*(pr+perc)*prd_b - 2*output_layer(3, k)*(&
 &           output_layer(4, k)+1._sp)*(pr+perc)*temp_b0 - 2*output_layer&
 &           (3, k)*temp*(pr+perc)*0.9_sp*prr_b
-          l_b = l_b + prl_b + prr_b
           temp_b = (1._sp-output_layer(3, k)**2)*temp_b0
           output_layer_b(4, k) = output_layer_b(4, k) + (pr+perc)*temp_b
           temp_b1 = (output_layer(4, k)+1._sp)*temp_b
@@ -19357,6 +20416,7 @@ CONTAINS
           temp_b = (1._sp-output_layer(3, k)**2)*0.9_sp*prr_b
           pr_b = pr_b + temp_b1 + temp*temp_b
           perc_b = perc_b + temp_b1 + temp*temp_b
+          l_b = l_b + prr_b
           output_layer_b(4, k) = output_layer_b(4, k) - 0.4_sp*(pr+perc)&
 &           *temp_b
           CALL POPCONTROL1B(branch)
@@ -19367,14 +20427,18 @@ CONTAINS
             CALL GR_EXCHANGE_B(output_layer(5, k), output_layer_b(5, k)&
 &                        , ac_kexc(k), ac_kexc_b(k), ac_ht(k), ac_ht_b(k&
 &                        ), l, l_b)
+            imperviousness = input_data%physio_data%imperviousness(row, &
+&             col)
+            CALL POPREAL4(pn(k))
             CALL POPREAL4(ac_hp(k))
             CALL POPREAL4(pr)
             CALL POPREAL4(perc)
             CALL GR_PRODUCTION_B(output_layer(1, k), output_layer_b(1, k&
 &                          ), output_layer(2, k), output_layer_b(2, k), &
-&                          pn(k), pn_b(k), en(k), en_b(k), ac_cp(k), &
-&                          ac_cp_b(k), 1000._sp, ac_hp(k), ac_hp_b(k), &
-&                          pr, pr_b, perc, perc_b)
+&                          pn(k), pn_b(k), en(k), en_b(k), &
+&                          imperviousness, ac_cp(k), ac_cp_b(k), &
+&                          1000._sp, ac_hp(k), ac_hp_b(k), pr, pr_b, &
+&                          perc, perc_b, ps, es)
           END IF
           CALL POPINTEGER4(k)
         END IF
@@ -19460,7 +20524,8 @@ CONTAINS
 &   output_layer
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, pn, en
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: pr, perc, l, prr, prl, prd, qr, ql, qd
+    REAL(sp) :: imperviousness, pr, perc, ps, es, l, prr, prl, prd, qr, &
+&   ql, qd
     INTRINSIC MAX
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
 &                              , 'prcp', ac_prcp)
@@ -19507,10 +20572,12 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_PRODUCTION(output_layer(1, k), output_layer(2, k), &
-&                        pn(k), en(k), ac_cp(k), 1000._sp, ac_hp(k), pr&
-&                        , perc)
+&                        pn(k), en(k), imperviousness, ac_cp(k), &
+&                        1000._sp, ac_hp(k), pr, perc, ps, es)
             CALL GR_EXCHANGE(output_layer(5, k), ac_kexc(k), ac_ht(k), l&
 &                     )
           ELSE
@@ -19525,7 +20592,7 @@ CONTAINS
 ! Range of correction c0.4: (0, 2)
 ! Range of correction c0.9: (1, 0)
           prl = 0.4_sp*(1._sp+output_layer(4, k))*(0.9_sp*(1._sp-&
-&           output_layer(3, k)**2))*(pr+perc) + l
+&           output_layer(3, k)**2))*(pr+perc)
 ! Range of correction c0.1: (0, 10)
           prd = (0.1_sp+0.9_sp*output_layer(3, k)**2)*(pr+perc)
           CALL GR_TRANSFER(5._sp, ac_prcp(k), prr, ac_ct(k), ac_ht(k), &
@@ -19571,7 +20638,7 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: ei, pn, en, pr, perc, prr, qr
+    REAL(sp) :: ei, pn, en, imperviousness, pr, perc, ps, es, prr, qr
     REAL(sp) :: ei_d, pn_d, en_d, pr_d, perc_d, prr_d, qr_d
     INTRINSIC MIN
     INTRINSIC MAX
@@ -19587,6 +20654,8 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             IF (ac_pet(k) .GT. ac_prcp(k)) THEN
               ei_d = ac_prcp_d(k)
@@ -19605,8 +20674,9 @@ CONTAINS
             en_d = -ei_d
             en = ac_pet(k) - ei
             CALL GR_PRODUCTION_D(0._sp, 0.0_4, 0._sp, 0.0_4, pn, pn_d, &
-&                          en, en_d, ac_cp(k), ac_cp_d(k), 1000._sp, &
-&                          ac_hp(k), ac_hp_d(k), pr, pr_d, perc, perc_d)
+&                          en, en_d, imperviousness, ac_cp(k), ac_cp_d(k&
+&                          ), 1000._sp, ac_hp(k), ac_hp_d(k), pr, pr_d, &
+&                          perc, perc_d, ps, es)
           ELSE
             pr = 0._sp
             perc = 0._sp
@@ -19654,7 +20724,7 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: ei, pn, en, pr, perc, prr, qr
+    REAL(sp) :: ei, pn, en, imperviousness, pr, perc, ps, es, prr, qr
     REAL(sp) :: ei_b, pn_b, en_b, pr_b, perc_b, prr_b, qr_b
     INTRINSIC MIN
     INTRINSIC MAX
@@ -19673,6 +20743,8 @@ CONTAINS
           CALL PUSHCONTROL1B(0)
         ELSE
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             IF (ac_pet(k) .GT. ac_prcp(k)) THEN
               ei = ac_prcp(k)
@@ -19682,19 +20754,18 @@ CONTAINS
               ei = ac_pet(k)
             END IF
             IF (0._sp .LT. ac_prcp(k) - ei) THEN
-              CALL PUSHREAL4(pn)
               pn = ac_prcp(k) - ei
               CALL PUSHCONTROL1B(0)
             ELSE
-              CALL PUSHREAL4(pn)
-              pn = 0._sp
               CALL PUSHCONTROL1B(1)
+              pn = 0._sp
             END IF
             CALL PUSHREAL4(en)
             en = ac_pet(k) - ei
             CALL PUSHREAL4(ac_hp(k))
-            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, ac_cp(k), 1000._sp&
-&                        , ac_hp(k), pr, perc)
+            CALL PUSHREAL4(pn)
+            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, imperviousness, &
+&                        ac_cp(k), 1000._sp, ac_hp(k), pr, perc, ps, es)
             CALL PUSHCONTROL1B(0)
           ELSE
             CALL PUSHCONTROL1B(1)
@@ -19729,22 +20800,22 @@ CONTAINS
           perc_b = prr_b
           CALL POPCONTROL1B(branch)
           IF (branch .EQ. 0) THEN
+            imperviousness = input_data%physio_data%imperviousness(row, &
+&             col)
+            CALL POPREAL4(pn)
             CALL POPREAL4(ac_hp(k))
             pn_b = 0.0_4
             en_b = 0.0_4
             CALL GR_PRODUCTION_B(0._sp, dummydiff_b, 0._sp, dummydiff_b0&
-&                          , pn, pn_b, en, en_b, ac_cp(k), ac_cp_b(k), &
-&                          1000._sp, ac_hp(k), ac_hp_b(k), pr, pr_b, &
-&                          perc, perc_b)
+&                          , pn, pn_b, en, en_b, imperviousness, ac_cp(k&
+&                          ), ac_cp_b(k), 1000._sp, ac_hp(k), ac_hp_b(k)&
+&                          , pr, pr_b, perc, perc_b, ps, es)
             CALL POPREAL4(en)
             ei_b = -en_b
             CALL POPCONTROL1B(branch)
             IF (branch .EQ. 0) THEN
-              CALL POPREAL4(pn)
               ac_prcp_b(k) = ac_prcp_b(k) + pn_b
               ei_b = ei_b - pn_b
-            ELSE
-              CALL POPREAL4(pn)
             END IF
             CALL POPCONTROL1B(branch)
             IF (branch .EQ. 0) ac_prcp_b(k) = ac_prcp_b(k) + ei_b
@@ -19770,7 +20841,7 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac), INTENT(INOUT) :: ac_qt
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: ei, pn, en, pr, perc, prr, qr
+    REAL(sp) :: ei, pn, en, imperviousness, pr, perc, ps, es, prr, qr
     INTRINSIC MIN
     INTRINSIC MAX
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
@@ -19783,6 +20854,8 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             IF (ac_pet(k) .GT. ac_prcp(k)) THEN
               ei = ac_prcp(k)
@@ -19795,8 +20868,8 @@ CONTAINS
               pn = 0._sp
             END IF
             en = ac_pet(k) - ei
-            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, ac_cp(k), 1000._sp&
-&                        , ac_hp(k), pr, perc)
+            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, imperviousness, &
+&                        ac_cp(k), 1000._sp, ac_hp(k), pr, perc, ps, es)
           ELSE
             pr = 0._sp
             perc = 0._sp
@@ -19864,7 +20937,7 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, ei, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d, ei_d, pn_d, en_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: pr, perc, prr, qr
+    REAL(sp) :: imperviousness, pr, perc, ps, es, prr, qr
     REAL(sp) :: pr_d, perc_d, prr_d, qr_d
     INTRINSIC MIN
     INTRINSIC MAX
@@ -19941,12 +21014,15 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_PRODUCTION_D(output_layer(1, k), output_layer_d(1, k&
 &                          ), output_layer(2, k), output_layer_d(2, k), &
-&                          pn(k), pn_d(k), en(k), en_d(k), ac_cp(k), &
-&                          ac_cp_d(k), 1000._sp, ac_hp(k), ac_hp_d(k), &
-&                          pr, pr_d, perc, perc_d)
+&                          pn(k), pn_d(k), en(k), en_d(k), &
+&                          imperviousness, ac_cp(k), ac_cp_d(k), &
+&                          1000._sp, ac_hp(k), ac_hp_d(k), pr, pr_d, &
+&                          perc, perc_d, ps, es)
           ELSE
             pr = 0._sp
             perc = 0._sp
@@ -20020,7 +21096,7 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, ei, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b, ei_b, pn_b, en_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: pr, perc, prr, qr
+    REAL(sp) :: imperviousness, pr, perc, ps, es, prr, qr
     REAL(sp) :: pr_b, perc_b, prr_b, qr_b
     INTRINSIC MIN
     INTRINSIC MAX
@@ -20094,11 +21170,14 @@ CONTAINS
           CALL PUSHCONTROL1B(0)
         ELSE
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL PUSHREAL4(ac_hp(k))
+            CALL PUSHREAL4(pn(k))
             CALL GR_PRODUCTION(output_layer(1, k), output_layer(2, k), &
-&                        pn(k), en(k), ac_cp(k), 1000._sp, ac_hp(k), pr&
-&                        , perc)
+&                        pn(k), en(k), imperviousness, ac_cp(k), &
+&                        1000._sp, ac_hp(k), pr, perc, ps, es)
             CALL PUSHCONTROL1B(0)
           ELSE
             CALL PUSHCONTROL1B(1)
@@ -20135,12 +21214,16 @@ CONTAINS
           perc_b = prr_b
           CALL POPCONTROL1B(branch)
           IF (branch .EQ. 0) THEN
+            imperviousness = input_data%physio_data%imperviousness(row, &
+&             col)
+            CALL POPREAL4(pn(k))
             CALL POPREAL4(ac_hp(k))
             CALL GR_PRODUCTION_B(output_layer(1, k), output_layer_b(1, k&
 &                          ), output_layer(2, k), output_layer_b(2, k), &
-&                          pn(k), pn_b(k), en(k), en_b(k), ac_cp(k), &
-&                          ac_cp_b(k), 1000._sp, ac_hp(k), ac_hp_b(k), &
-&                          pr, pr_b, perc, perc_b)
+&                          pn(k), pn_b(k), en(k), en_b(k), &
+&                          imperviousness, ac_cp(k), ac_cp_b(k), &
+&                          1000._sp, ac_hp(k), ac_hp_b(k), pr, pr_b, &
+&                          perc, perc_b, ps, es)
           END IF
         END IF
       END DO
@@ -20234,7 +21317,7 @@ CONTAINS
 &   output_layer
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, ei, pn, en
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: pr, perc, prr, qr
+    REAL(sp) :: imperviousness, pr, perc, ps, es, prr, qr
     INTRINSIC MIN
     INTRINSIC MAX
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
@@ -20291,10 +21374,12 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_PRODUCTION(output_layer(1, k), output_layer(2, k), &
-&                        pn(k), en(k), ac_cp(k), 1000._sp, ac_hp(k), pr&
-&                        , perc)
+&                        pn(k), en(k), imperviousness, ac_cp(k), &
+&                        1000._sp, ac_hp(k), pr, perc, ps, es)
           ELSE
             pr = 0._sp
             perc = 0._sp
@@ -20337,7 +21422,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, ei, pn, en, pr, perc, prr, prd, qr, qd
+    REAL(sp) :: beta, ei, pn, en, imperviousness, pr, perc, ps, es, prr&
+&   , prd, qr, qd
     REAL(sp) :: ei_d, pn_d, en_d, pr_d, perc_d, prr_d, prd_d, qr_d, qd_d
     INTRINSIC MIN
     INTRINSIC MAX
@@ -20355,6 +21441,8 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             IF (ac_pet(k) .GT. ac_prcp(k)) THEN
               ei_d = ac_prcp_d(k)
@@ -20373,8 +21461,9 @@ CONTAINS
             en_d = -ei_d
             en = ac_pet(k) - ei
             CALL GR_PRODUCTION_D(0._sp, 0.0_4, 0._sp, 0.0_4, pn, pn_d, &
-&                          en, en_d, ac_ca(k), ac_ca_d(k), beta, ac_ha(k&
-&                          ), ac_ha_d(k), pr, pr_d, perc, perc_d)
+&                          en, en_d, imperviousness, ac_ca(k), ac_ca_d(k&
+&                          ), beta, ac_ha(k), ac_ha_d(k), pr, pr_d, perc&
+&                          , perc_d, ps, es)
           ELSE
             pr = 0._sp
             perc = 0._sp
@@ -20431,7 +21520,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, ei, pn, en, pr, perc, prr, prd, qr, qd
+    REAL(sp) :: beta, ei, pn, en, imperviousness, pr, perc, ps, es, prr&
+&   , prd, qr, qd
     REAL(sp) :: ei_b, pn_b, en_b, pr_b, perc_b, prr_b, prd_b, qr_b, qd_b
     INTRINSIC MIN
     INTRINSIC MAX
@@ -20452,6 +21542,8 @@ CONTAINS
           CALL PUSHCONTROL1B(0)
         ELSE
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             IF (ac_pet(k) .GT. ac_prcp(k)) THEN
               ei = ac_prcp(k)
@@ -20461,19 +21553,18 @@ CONTAINS
               ei = ac_pet(k)
             END IF
             IF (0._sp .LT. ac_prcp(k) - ei) THEN
-              CALL PUSHREAL4(pn)
               pn = ac_prcp(k) - ei
               CALL PUSHCONTROL1B(0)
             ELSE
-              CALL PUSHREAL4(pn)
-              pn = 0._sp
               CALL PUSHCONTROL1B(1)
+              pn = 0._sp
             END IF
             CALL PUSHREAL4(en)
             en = ac_pet(k) - ei
             CALL PUSHREAL4(ac_ha(k))
-            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, ac_ca(k), beta, &
-&                        ac_ha(k), pr, perc)
+            CALL PUSHREAL4(pn)
+            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, imperviousness, &
+&                        ac_ca(k), beta, ac_ha(k), pr, perc, ps, es)
             CALL PUSHCONTROL1B(1)
           ELSE
             CALL PUSHCONTROL1B(0)
@@ -20529,22 +21620,22 @@ CONTAINS
           CALL POPREAL4(prr)
           CALL POPCONTROL1B(branch)
           IF (branch .NE. 0) THEN
+            imperviousness = input_data%physio_data%imperviousness(row, &
+&             col)
+            CALL POPREAL4(pn)
             CALL POPREAL4(ac_ha(k))
             pn_b = 0.0_4
             en_b = 0.0_4
             CALL GR_PRODUCTION_B(0._sp, dummydiff_b, 0._sp, dummydiff_b0&
-&                          , pn, pn_b, en, en_b, ac_ca(k), ac_ca_b(k), &
-&                          beta, ac_ha(k), ac_ha_b(k), pr, pr_b, perc, &
-&                          perc_b)
+&                          , pn, pn_b, en, en_b, imperviousness, ac_ca(k&
+&                          ), ac_ca_b(k), beta, ac_ha(k), ac_ha_b(k), pr&
+&                          , pr_b, perc, perc_b, ps, es)
             CALL POPREAL4(en)
             ei_b = -en_b
             CALL POPCONTROL1B(branch)
             IF (branch .EQ. 0) THEN
-              CALL POPREAL4(pn)
               ac_prcp_b(k) = ac_prcp_b(k) + pn_b
               ei_b = ei_b - pn_b
-            ELSE
-              CALL POPREAL4(pn)
             END IF
             CALL POPCONTROL1B(branch)
             IF (branch .EQ. 0) ac_prcp_b(k) = ac_prcp_b(k) + ei_b
@@ -20570,7 +21661,8 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac), INTENT(INOUT) :: ac_qt
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, ei, pn, en, pr, perc, prr, prd, qr, qd
+    REAL(sp) :: beta, ei, pn, en, imperviousness, pr, perc, ps, es, prr&
+&   , prd, qr, qd
     INTRINSIC MIN
     INTRINSIC MAX
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
@@ -20585,6 +21677,8 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             IF (ac_pet(k) .GT. ac_prcp(k)) THEN
               ei = ac_prcp(k)
@@ -20597,8 +21691,8 @@ CONTAINS
               pn = 0._sp
             END IF
             en = ac_pet(k) - ei
-            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, ac_ca(k), beta, &
-&                        ac_ha(k), pr, perc)
+            CALL GR_PRODUCTION(0._sp, 0._sp, pn, en, imperviousness, &
+&                        ac_ca(k), beta, ac_ha(k), pr, perc, ps, es)
           ELSE
             pr = 0._sp
             perc = 0._sp
@@ -20674,7 +21768,7 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, ei, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_d, ei_d, pn_d, en_d
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pr, perc, prr, prd, qr, qd
+    REAL(sp) :: beta, imperviousness, pr, perc, ps, es, prr, prd, qr, qd
     REAL(sp) :: pr_d, perc_d, prr_d, prd_d, qr_d, qd_d
     INTRINSIC MIN
     INTRINSIC MAX
@@ -20753,12 +21847,15 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_PRODUCTION_D(output_layer(1, k), output_layer_d(1, k&
 &                          ), output_layer(2, k), output_layer_d(2, k), &
-&                          pn(k), pn_d(k), en(k), en_d(k), ac_ca(k), &
-&                          ac_ca_d(k), beta, ac_ha(k), ac_ha_d(k), pr, &
-&                          pr_d, perc, perc_d)
+&                          pn(k), pn_d(k), en(k), en_d(k), &
+&                          imperviousness, ac_ca(k), ac_ca_d(k), beta, &
+&                          ac_ha(k), ac_ha_d(k), pr, pr_d, perc, perc_d&
+&                          , ps, es)
           ELSE
             pr = 0._sp
             perc = 0._sp
@@ -20849,7 +21946,7 @@ CONTAINS
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, ei, pn, en
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp_b, ei_b, pn_b, en_b
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pr, perc, prr, prd, qr, qd
+    REAL(sp) :: beta, imperviousness, pr, perc, ps, es, prr, prd, qr, qd
     REAL(sp) :: pr_b, perc_b, prr_b, prd_b, qr_b, qd_b
     INTRINSIC MIN
     INTRINSIC MAX
@@ -20927,13 +22024,16 @@ CONTAINS
         ELSE
           CALL PUSHINTEGER4(k)
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL PUSHREAL4(perc)
             CALL PUSHREAL4(pr)
             CALL PUSHREAL4(ac_ha(k))
+            CALL PUSHREAL4(pn(k))
             CALL GR_PRODUCTION(output_layer(1, k), output_layer(2, k), &
-&                        pn(k), en(k), ac_ca(k), beta, ac_ha(k), pr, &
-&                        perc)
+&                        pn(k), en(k), imperviousness, ac_ca(k), beta, &
+&                        ac_ha(k), pr, perc, ps, es)
             CALL PUSHCONTROL1B(1)
           ELSE
             CALL PUSHREAL4(pr)
@@ -21003,14 +22103,18 @@ CONTAINS
             CALL POPREAL4(perc)
             CALL POPREAL4(pr)
           ELSE
+            imperviousness = input_data%physio_data%imperviousness(row, &
+&             col)
+            CALL POPREAL4(pn(k))
             CALL POPREAL4(ac_ha(k))
             CALL POPREAL4(pr)
             CALL POPREAL4(perc)
             CALL GR_PRODUCTION_B(output_layer(1, k), output_layer_b(1, k&
 &                          ), output_layer(2, k), output_layer_b(2, k), &
-&                          pn(k), pn_b(k), en(k), en_b(k), ac_ca(k), &
-&                          ac_ca_b(k), beta, ac_ha(k), ac_ha_b(k), pr, &
-&                          pr_b, perc, perc_b)
+&                          pn(k), pn_b(k), en(k), en_b(k), &
+&                          imperviousness, ac_ca(k), ac_ca_b(k), beta, &
+&                          ac_ha(k), ac_ha_b(k), pr, pr_b, perc, perc_b&
+&                          , ps, es)
           END IF
           CALL POPINTEGER4(k)
         END IF
@@ -21105,7 +22209,7 @@ CONTAINS
 &   output_layer
     REAL(sp), DIMENSION(mesh%nac) :: ac_prcp, ac_pet, ei, pn, en
     INTEGER :: row, col, k, time_step_returns
-    REAL(sp) :: beta, pr, perc, prr, prd, qr, qd
+    REAL(sp) :: beta, imperviousness, pr, perc, ps, es, prr, prd, qr, qd
     INTRINSIC MIN
     INTRINSIC MAX
     CALL GET_AC_ATMOS_DATA_TIME_STEP(setup, mesh, input_data, time_step&
@@ -21164,10 +22268,12 @@ CONTAINS
         IF (.NOT.(mesh%active_cell(row, col) .EQ. 0 .OR. mesh%&
 &           local_active_cell(row, col) .EQ. 0)) THEN
           k = mesh%rowcol_to_ind_ac(row, col)
+          imperviousness = input_data%physio_data%imperviousness(row, &
+&           col)
           IF (ac_prcp(k) .GE. 0._sp .AND. ac_pet(k) .GE. 0._sp) THEN
             CALL GR_PRODUCTION(output_layer(1, k), output_layer(2, k), &
-&                        pn(k), en(k), ac_ca(k), beta, ac_ha(k), pr, &
-&                        perc)
+&                        pn(k), en(k), imperviousness, ac_ca(k), beta, &
+&                        ac_ha(k), pr, perc, ps, es)
           ELSE
             pr = 0._sp
             perc = 0._sp
@@ -28171,8 +29277,8 @@ END MODULE MD_SIMULATION_DIFF
 !                *(parameters.nn_parameters.weight_3):(loc) *(parameters.nn_parameters.bias_3):(loc)
 !                *(output.response.q):(loc) output.cost:out
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in parameters.rr_parameters.values:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in parameters.rr_parameters.values:in
 !                parameters.rr_initial_states.values:in parameters.serr_mu_parameters.values:in
 !                parameters.serr_sigma_parameters.values:in parameters.nn_parameters.weight_1:in
 !                parameters.nn_parameters.bias_1:in parameters.nn_parameters.weight_2:in
@@ -28239,8 +29345,8 @@ END SUBROUTINE BASE_FORWARD_RUN_D
 !                *(parameters.nn_parameters.weight_3):(loc) *(parameters.nn_parameters.bias_3):(loc)
 !                *(output.response.q):(loc) output.cost:in-killed
 !   Plus diff mem management of: parameters.control.x:in parameters.control.l:in
-!                parameters.control.u:in parameters.control.l_bkg:in
-!                parameters.control.u_bkg:in parameters.rr_parameters.values:in
+!                parameters.control.u:in parameters.control.l_raw:in
+!                parameters.control.u_raw:in parameters.rr_parameters.values:in
 !                parameters.rr_initial_states.values:in parameters.serr_mu_parameters.values:in
 !                parameters.serr_sigma_parameters.values:in parameters.nn_parameters.weight_1:in
 !                parameters.nn_parameters.bias_1:in parameters.nn_parameters.weight_2:in
