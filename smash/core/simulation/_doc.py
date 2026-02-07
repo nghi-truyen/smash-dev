@@ -519,7 +519,7 @@ COST_OPTIONS_BASE_DOC = {
     ),
     "event_seg": (
         """
-        `dict[str, float]`, default {'peak_quant': 0.995, 'max_duration': 240}
+        `dict[str, float]`, default {'peak_quant': 0.995, 'peak_value': 0, 'max_duration': 240}
         """,
         """
         A dictionary of event segmentation options when calculating flood event signatures for cost
@@ -1634,7 +1634,7 @@ Get the default optimization options for a different mapping
         +----------------------------------------------------------+
         Total parameters: 265
         Trainable parameters: 265,
-    'learning_rate': 0.001,
+    'learning_rate': 0.003,
     'random_state': None,
     'termination_crit': {'maxiter': 200, 'early_stopping': 0}
 }
